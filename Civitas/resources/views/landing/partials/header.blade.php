@@ -22,7 +22,7 @@
                     <div class="w-full text-gray-600 dark:text-gray-200 lg:w-auto lg:pr-4 lg:pt-0">
                         <div id="links-group" class="flex flex-col gap-6 tracking-wide lg:flex-row lg:gap-0 lg:text-sm">
                             <a href="#features" class="hover:text-brand-500 block transition dark:hover:text-white md:px-4"><span>Features</span></a>
-                            <a href="#solution" class="hover:text-brand-500 block transition dark:hover:text-white md:px-4"><span>Why Us</span></a>
+                            <a href="#solution" class="hover:text-brand-500 block transition dark:hover:text-white md:px-4"><span>Services</span></a>
                             <a href="#techstack" class="hover:text-brand-500 block transition dark:hover:text-white md:px-4"><span>Tech Stack</span></a>
                             <a href="{{ route('login') }}" class="hover:text-brand-500 block transition dark:hover:text-white md:px-4"><span>Sign In</span></a>
                         </div>

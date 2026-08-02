@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Template built with tailwindcss using Tailus blocks v2" />
+    <meta name="description" content="Civitas — a government-grade platform to manage citizen records, deliver public services, collect payments, and keep a full audit trail." />
     <title>{{ config('app.name', 'Civitas') }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}" />
     @vite(['resources/css/app.css'])

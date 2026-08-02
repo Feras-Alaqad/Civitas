@@ -4,12 +4,12 @@
             <div class="flex flex-wrap items-center justify-between md:flex-nowrap">
                 <div class="flex w-full justify-center space-x-12 text-gray-600 dark:text-gray-300 sm:w-7/12 md:justify-start">
                     <ul class="list-inside list-disc space-y-8">
-                        <li><a href="#" class="transition hover:text-brand-500">Home</a></li>
-                        <li><a href="#" class="transition hover:text-brand-500">About</a></li>
-                        <li><a href="#" class="transition hover:text-brand-500">Guide</a></li>
-                        <li><a href="#" class="transition hover:text-brand-500">Blocks</a></li>
-                        <li><a href="#" class="transition hover:text-brand-500">Contact</a></li>
-                        <li><a href="#" class="transition hover:text-brand-500">Terms of Use</a></li>
+                        <li><a href="#home" class="transition hover:text-brand-500">Home</a></li>
+                        <li><a href="#features" class="transition hover:text-brand-500">Features</a></li>
+                        <li><a href="#solution" class="transition hover:text-brand-500">Services</a></li>
+                        <li><a href="#techstack" class="transition hover:text-brand-500">Tech Stack</a></li>
+                        <li><a href="{{ route('login') }}" class="transition hover:text-brand-500">Sign In</a></li>
+                        <li><a href="{{ route('register') }}" class="transition hover:text-brand-500">Get Started</a></li>
                     </ul>
                     <ul role="list" class="space-y-8">
                         <li><a href="#" class="transition hover:text-brand-500">
@@ -30,8 +30,8 @@
                     </ul>
                 </div>
                 <div class="m-auto mt-16 w-10/12 space-y-6 text-center sm:mt-auto sm:w-5/12 sm:text-left">
-                    <span class="block text-gray-500 dark:text-gray-400">We change the way UI components libraries are used</span>
-                    <span class="block text-gray-500 dark:text-gray-400">Tailus Blocks &copy; <span id="year"></span></span>
+                    <span class="block text-gray-500 dark:text-gray-400">Civitas — the digital backbone for citizen services</span>
+                    <span class="block text-gray-500 dark:text-gray-400">Civitas &copy; <span id="year"></span></span>
                     <span class="flex justify-between text-gray-600 dark:text-white">
                         <a href="#" class="font-medium">Terms of Use</a>
                         <a href="#" class="font-medium">Privacy Policy</a>
