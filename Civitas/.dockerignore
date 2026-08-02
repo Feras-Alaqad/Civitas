@@ -1,0 +1,15 @@
+.env
+.env.*
+.git
+.gitignore
+/vendor
+/node_modules
+/public/build
+/storage/*.key
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+test2.csv
+Dockerfile
+.dockerignore
