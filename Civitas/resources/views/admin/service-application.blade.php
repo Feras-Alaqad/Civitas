@@ -13,7 +13,7 @@
     .ripple-effect {
         position: absolute;
         border-radius: 50%;
-        background: rgba(59, 130, 246, 0.15);
+        background: rgba(201, 169, 110, 0.15);
         transform: scale(0);
         animation: rippleAnim 0.6s ease-out;
         pointer-events: none;
@@ -39,8 +39,8 @@
         100% { opacity: 1; transform: translateY(0); }
     }
     @keyframes glowPulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-        50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.08); }
+        0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 110, 0); }
+        50% { box-shadow: 0 0 0 6px rgba(201, 169, 110, 0.08); }
     }
     .service-type-card.selected {
         animation: glowPulse 1.5s ease-in-out infinite;
@@ -79,9 +79,9 @@
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }
     .department-tab:hover {
-        border-color: #93c5fd;
+        border-color: #eecb76;
         transform: translateY(-2px);
-        box-shadow: 0 10px 24px -8px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 10px 24px -8px rgba(201, 169, 110, 0.3);
     }
     .department-tab::after {
         content: '';
@@ -92,15 +92,15 @@
         width: 5px;
         height: 5px;
         border-radius: 999px;
-        background: #2563eb;
+        background: #b8924f;
         transition: transform 0.3s ease;
     }
     .department-tab.active {
-        border-color: #2563eb;
-        background: linear-gradient(150deg, #eff6ff 0%, #dbeafe 100%);
-        color: #1d4ed8;
+        border-color: #b8924f;
+        background: linear-gradient(150deg, #fdf8ec 0%, #faf0d4 100%);
+        color: #9a763e;
         transform: translateY(-3px);
-        box-shadow: 0 14px 30px -8px rgba(37, 99, 235, 0.45);
+        box-shadow: 0 14px 30px -8px rgba(184, 146, 79, 0.45);
     }
     .department-tab.active::after { transform: translateX(-50%) scale(1); }
 
@@ -116,14 +116,14 @@
         transition: all 0.3s ease;
     }
     .department-tab:hover .tab-icon {
-        background: #dbeafe;
-        color: #2563eb;
+        background: #faf0d4;
+        color: #b8924f;
         transform: scale(1.08) rotate(-4deg);
     }
     .department-tab.active .tab-icon {
-        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        background: linear-gradient(135deg, #b8924f, #c9a96e);
         color: #fff;
-        box-shadow: 0 8px 18px -5px rgba(37, 99, 235, 0.6);
+        box-shadow: 0 8px 18px -5px rgba(184, 146, 79, 0.6);
     }
     .department-tab .tab-label {
         font-size: 13px;
@@ -149,7 +149,7 @@
         transition: all 0.3s ease;
     }
     .department-tab.active .tab-count {
-        background: #2563eb;
+        background: #b8924f;
         color: #fff;
     }
 
@@ -159,32 +159,32 @@
         color: #9ca3af;
     }
     .dark .department-tab:hover {
-        border-color: rgba(59, 130, 246, 0.5);
+        border-color: rgba(201, 169, 110, 0.5);
     }
     .dark .department-tab .tab-icon {
         background: rgba(255, 255, 255, 0.06);
         color: #9ca3af;
     }
     .dark .department-tab:hover .tab-icon {
-        background: rgba(59, 130, 246, 0.2);
-        color: #93c5fd;
+        background: rgba(201, 169, 110, 0.2);
+        color: #eecb76;
     }
     .dark .department-tab .tab-count {
         background: rgba(255, 255, 255, 0.08);
         color: #9ca3af;
     }
     .dark .department-tab.active {
-        background: rgba(37, 99, 235, 0.15);
-        border-color: #3b82f6;
-        color: #93c5fd;
-        box-shadow: 0 16px 32px -10px rgba(59, 130, 246, 0.55);
+        background: rgba(184, 146, 79, 0.15);
+        border-color: #c9a96e;
+        color: #eecb76;
+        box-shadow: 0 16px 32px -10px rgba(201, 169, 110, 0.55);
     }
     .dark .department-tab.active .tab-icon {
-        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        background: linear-gradient(135deg, #b8924f, #c9a96e);
         color: #fff;
     }
     .dark .department-tab.active .tab-count {
-        background: #3b82f6;
+        background: #c9a96e;
         color: #fff;
     }
 </style>
@@ -203,9 +203,6 @@
     {{-- Person Info --}}
     <div class="border-t border-gray-100 dark:border-gray-800 px-5 py-4">
         <div class="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
-            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 uppercase">
-                {{ substr($person->FullName, 0, 1) }}
-            </div>
             <div>
                 <p class="text-sm font-semibold text-gray-800 dark:text-white/90">{{ $person->FullName }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">ID: {{ $person->NationalID ?? '—' }} | {{ $person->GovernorateName ?? '—' }}</p>
@@ -258,7 +255,7 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="serviceTypeGrid">
                     @foreach($serviceTypes as $st)
-                    <label class="service-type-card group relative flex cursor-pointer flex-col rounded-xl border-2 border-gray-200 bg-white p-4 transition-all duration-300 ease-out hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-blue-500/50 dark:hover:shadow-lg dark:hover:shadow-blue-500/5 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 has-[:checked]:shadow-lg has-[:checked]:shadow-blue-500/10 has-[:checked]:scale-[1.02] dark:has-[:checked]:border-blue-400/60 dark:has-[:checked]:bg-blue-500/10 dark:has-[:checked]:shadow-lg dark:has-[:checked]:shadow-blue-500/20"
+                    <label class="service-type-card group relative flex cursor-pointer flex-col rounded-xl border-2 border-gray-200 bg-white p-4 transition-all duration-300 ease-out hover:border-brand-300 hover:shadow-md hover:-translate-y-0.5 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-brand-500/50 dark:hover:shadow-lg dark:hover:shadow-brand-500/5 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:shadow-lg has-[:checked]:shadow-brand-500/10 has-[:checked]:scale-[1.02] dark:has-[:checked]:border-brand-400/60 dark:has-[:checked]:bg-brand-500/10 dark:has-[:checked]:shadow-lg dark:has-[:checked]:shadow-brand-500/20"
                            data-service-id="{{ $st->ServiceTypeID }}"
                            data-service-name="{{ $st->ServiceName }}"
                            data-service-fees="{{ $st->Fees }}"
@@ -266,15 +263,15 @@
                            data-department="{{ $st->department?->DepartmentName ?? '—' }}">
                         <input type="radio" name="service_type_id" value="{{ $st->ServiceTypeID }}" class="sr-only" required>
 
-                        <div class="check-indicator absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 scale-0 opacity-0 has-[:checked]:scale-100 has-[:checked]:opacity-100 dark:bg-blue-400 dark:shadow-blue-400/30">
+                        <div class="check-indicator absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg shadow-brand-500/30 transition-all duration-300 scale-0 opacity-0 has-[:checked]:scale-100 has-[:checked]:opacity-100 dark:bg-brand-400 dark:shadow-brand-400/30">
                             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
 
                         <div class="mb-2 flex items-center justify-between">
-                            <span class="text-sm font-semibold text-gray-800 transition-colors duration-300 group-has-[:checked]:text-blue-700 dark:text-white/90 dark:group-has-[:checked]:text-blue-300">{{ $st->ServiceName }}</span>
-                            <span class="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-600 transition-all duration-300 group-has-[:checked]:bg-blue-500 group-has-[:checked]:text-white dark:bg-blue-500/15 dark:text-blue-400 dark:group-has-[:checked]:bg-blue-400 dark:group-has-[:checked]:text-white">${{ number_format($st->Fees, 2) }}</span>
+                            <span class="text-sm font-semibold text-gray-800 transition-colors duration-300 group-has-[:checked]:text-brand-700 dark:text-white/90 dark:group-has-[:checked]:text-brand-300">{{ $st->ServiceName }}</span>
+                            <span class="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-600 transition-all duration-300 group-has-[:checked]:bg-brand-500 group-has-[:checked]:text-white dark:bg-brand-500/15 dark:text-brand-400 dark:group-has-[:checked]:bg-brand-400 dark:group-has-[:checked]:text-white">${{ number_format($st->Fees, 2) }}</span>
                         </div>
                         <span class="text-[11px] text-gray-400 dark:text-gray-500">{{ $st->department?->DepartmentName ?? '—' }}</span>
                         @if($st->RequiredDocuments)
@@ -318,7 +315,7 @@
                         <svg class="mb-2 h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                         </svg>
-                        <p class="text-xs text-gray-500 dark:text-gray-400"><span class="font-semibold text-blue-600 dark:text-blue-400">Click to upload</span> or drag and drop</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400"><span class="font-semibold text-brand-600 dark:text-brand-400">Click to upload</span> or drag and drop</p>
                         <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">PDF, JPG, PNG up to 10MB each</p>
                         <input type="file" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png" class="hidden">
                     </div>
@@ -364,8 +361,8 @@
             </div>
             <div class="p-6">
                 <div class="mb-5 flex flex-col items-center gap-3">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/15">
-                        <svg class="h-7 w-7 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-500/15">
+                        <svg class="h-7 w-7 text-brand-600 dark:text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                         </svg>
                     </div>
@@ -398,7 +395,7 @@
         {{-- Step 2: Processing --}}
         <div id="paymentStepProcessing" class="hidden">
             <div class="flex flex-col items-center justify-center py-16 px-6">
-                <svg class="mb-4 h-12 w-12 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg class="mb-4 h-12 w-12 text-brand-600 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                 </svg>
@@ -605,11 +602,11 @@ const fileInput = document.getElementById('fileInput');
 const fileDropZone = document.getElementById('fileDropZone');
 
 fileDropZone.addEventListener('click', () => fileInput.click());
-fileDropZone.addEventListener('dragover', e => { e.preventDefault(); fileDropZone.classList.add('border-blue-400', 'bg-blue-50'); });
-fileDropZone.addEventListener('dragleave', () => { fileDropZone.classList.remove('border-blue-400', 'bg-blue-50'); });
+fileDropZone.addEventListener('dragover', e => { e.preventDefault(); fileDropZone.classList.add('border-brand-400', 'bg-brand-50'); });
+fileDropZone.addEventListener('dragleave', () => { fileDropZone.classList.remove('border-brand-400', 'bg-brand-50'); });
 fileDropZone.addEventListener('drop', e => {
     e.preventDefault();
-    fileDropZone.classList.remove('border-blue-400', 'bg-blue-50');
+    fileDropZone.classList.remove('border-brand-400', 'bg-brand-50');
     handleFiles(e.dataTransfer.files);
 });
 
@@ -849,7 +846,7 @@ function printReceipt() {
                 .border-t { border-top: 1px solid #e5e7eb; margin-top: 12px; padding-top: 12px; }
                 .font-mono { font-family: monospace; }
                 h2 { text-align: center; margin-bottom: 20px; }
-                .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #2563eb; padding-bottom: 10px; }
+                .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #b8924f; padding-bottom: 10px; }
             </style>
         </head>
         <body>

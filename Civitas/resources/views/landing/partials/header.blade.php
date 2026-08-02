@@ -3,11 +3,9 @@
         <div class="max-w-7xl mx-auto px-6 md:px-12">
             <div class="relative flex flex-wrap items-center justify-between gap-6 py-3 md:gap-0 md:py-4">
                 <div class="relative z-20 flex w-full justify-between md:px-0 lg:w-fit">
-                    <a href="/" aria-label="logo" class="flex items-center space-x-2">
-                        <div aria-hidden="true" class="flex space-x-1">
-                            <div class="size-4 rounded-full bg-gray-900 dark:bg-white"></div>
-                            <div class="h-6 w-2 bg-brand-500"></div>
-                        </div>
+                    <a href="/" aria-label="logo" class="flex items-center space-x-3">
+                        <img class="h-8 w-auto dark:hidden" src="{{ asset('logo.svg') }}" alt="Civitas" />
+                        <img class="hidden h-8 w-auto dark:block" src="{{ asset('logo-dark.svg') }}" alt="Civitas" />
                         <span class="text-2xl font-bold text-gray-900 dark:text-white">Civitas</span>
                     </a>
                     <div class="relative flex max-h-10 items-center lg:hidden">

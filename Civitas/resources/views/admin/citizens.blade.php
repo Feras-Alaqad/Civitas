@@ -27,7 +27,7 @@
     <div class="flex items-center gap-4 px-5 pt-4 pb-4">
         <div class="flex shrink-0 items-center gap-3">
             <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Persons</h3>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-600 dark:bg-blue-500/15 dark:text-blue-500">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-sm font-semibold text-brand-600 dark:bg-brand-500/15 dark:text-brand-500">
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/>
                 </svg>
@@ -83,7 +83,7 @@
                 <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
                     <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">Gender</span>
                     <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-white/90">
-                        <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {{ $selectedPerson->Gender === 'male' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-500' : 'bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-500' }}">{{ ucfirst($selectedPerson->Gender ?? '—') }}</span>
+                        <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {{ $selectedPerson->Gender === 'male' ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-500' : 'bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-500' }}">{{ ucfirst($selectedPerson->Gender ?? '—') }}</span>
                     </p>
                 </div>
                 <div class="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
@@ -175,7 +175,7 @@
                                         'Completed' => 'bg-green-50 text-green-600 dark:bg-green-500/15 dark:text-green-400',
                                         'Pending' => 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
                                         'Cancelled' => 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400',
-                                        'In Progress' => 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400',
+                                        'In Progress' => 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400',
                                         default => 'bg-gray-50 text-gray-600 dark:bg-gray-500/15 dark:text-gray-400',
                                     };
                                 @endphp
@@ -231,7 +231,7 @@
                 'Completed': 'bg-green-50 text-green-600 dark:bg-green-500/15 dark:text-green-400',
                 'Pending': 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
                 'Cancelled': 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400',
-                'In Progress': 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400',
+                'In Progress': 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400',
             };
             const badge = statusBadge[data.status] || 'bg-gray-50 text-gray-600 dark:bg-gray-500/15 dark:text-gray-400';
 
@@ -321,14 +321,11 @@
                     @forelse ($citizens as $c)
                     <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" onclick="window.location='{{ route('admin.citizens', ['person_id' => $c->PersonID, 'search' => request('search')]) }}'">
                         <td class="py-3.5 px-4">
-                            <div class="flex items-center gap-3">
-                                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-600 dark:bg-brand-900/50 dark:text-brand-400 uppercase">{{ substr($c->FullName, 0, 1) }}</span>
-                                <span class="text-sm font-medium text-gray-800 dark:text-white/90">{{ $c->FullName }}</span>
-                            </div>
+                            <span class="text-sm font-medium text-gray-800 dark:text-white/90">{{ $c->FullName }}</span>
                         </td>
                         <td class="py-3.5 px-4"><span class="text-sm font-mono text-gray-500 dark:text-gray-400">{{ $c->NationalID ?? '—' }}</span></td>
                         <td class="py-3.5 px-4">
-                            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {{ ($c->Gender ?? '') === 'male' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-500' : 'bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-500' }}">
+                            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {{ ($c->Gender ?? '') === 'male' ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-500' : 'bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-500' }}">
                                 @if(($c->Gender ?? '') === 'male')
                                 <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2ZM12 14C7.58172 14 4 16.6863 4 20C4 20.5523 4.44772 21 5 21H19C19.5523 21 20 20.5523 20 20C20 16.6863 16.4183 14 12 14Z"/></svg>
                                 @else

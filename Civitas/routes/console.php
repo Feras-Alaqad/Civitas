@@ -15,3 +15,7 @@ Schedule::command('cache:warm-citizens --pages=5')
 Schedule::command('cache:warm-dashboard')
     ->everyFourMinutes()
     ->withoutOverlapping();
+
+Schedule::command('citizens:refresh-cache')
+    ->everyFiveSeconds()
+    ->withoutOverlapping();

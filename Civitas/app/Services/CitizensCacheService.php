@@ -42,7 +42,7 @@ class CitizensCacheService
     {
         $cacheKey = 'citizens:total_count';
 
-        return (int) Cache::remember($cacheKey, self::TTL_LIST, function () {
+        return (int) Cache::rememberForever($cacheKey, function () {
             return DB::table('Persons')->count();
         });
     }
@@ -65,7 +65,7 @@ class CitizensCacheService
     {
         $cacheKey = $this->buildMeilisearchCacheKey($search, $page);
 
-        Cache::put($cacheKey, json_encode($data), self::TTL_LIST);
+        Cache::forever($cacheKey, json_encode($data));
     }
 
     public function getCachedMeilisearchTotal(string $search): int
@@ -77,14 +77,14 @@ class CitizensCacheService
     public function putCachedMeilisearchTotal(string $search, int $total): void
     {
         $cacheKey = 'citizens:meilisearch_total:' . md5($search);
-        Cache::put($cacheKey, $total, self::TTL_LIST);
+        Cache::forever($cacheKey, $total);
     }
 
     public function searchCachedRows(string $search, int $offset): array
     {
         $cacheKey = $this->buildListCacheKey($search, $offset);
 
-        $cached = Cache::remember($cacheKey, self::TTL_LIST, function () use ($search, $offset) {
+        $cached = Cache::rememberForever($cacheKey, function () use ($search, $offset) {
             $type = $this->detectSearchType($search);
 
             $personIds = collect();
@@ -225,17 +225,17 @@ class CitizensCacheService
         $rows = $query->limit(self::PER_PAGE + 1)->skip($offset)->get();
         $hasMore = $rows->count() > self::PER_PAGE;
 
-        Cache::put($cacheKey, json_encode([
+        Cache::forever($cacheKey, json_encode([
             'rows' => $rows->take(self::PER_PAGE)->values()->all(),
             'hasMore' => $hasMore,
-        ]), self::TTL_LIST);
+        ]));
     }
 
     public function getCachedRows(string $search, int $offset): array
     {
         $cacheKey = $this->buildListCacheKey($search, $offset);
 
-        $cached = Cache::remember($cacheKey, self::TTL_LIST, function () use ($search, $offset) {
+        $cached = Cache::rememberForever($cacheKey, function () use ($search, $offset) {
             $query = DB::table('Persons')
                 ->leftJoin('Governorates', 'Governorates.GovernorateID', '=', 'Persons.GovernorateID')
                 ->leftJoin('Nationalities', 'Nationalities.NationalityID', '=', 'Persons.NationalityID')
@@ -269,7 +269,7 @@ class CitizensCacheService
     {
         $cacheKey = $this->buildPersonCacheKey($personId);
 
-        $cached = Cache::remember($cacheKey, self::TTL_PERSON, function () use ($personId) {
+        $cached = Cache::rememberForever($cacheKey, function () use ($personId) {
             $row = DB::table('Persons')
                 ->leftJoin('Governorates', 'Governorates.GovernorateID', '=', 'Persons.GovernorateID')
                 ->leftJoin('Cities', 'Cities.CityID', '=', 'Persons.CityID')
@@ -293,7 +293,7 @@ class CitizensCacheService
     {
         $cacheKey = $this->buildRequestsCacheKey($personId);
 
-        $cached = Cache::remember($cacheKey, self::TTL_PERSON, function () use ($personId) {
+        $cached = Cache::rememberForever($cacheKey, function () use ($personId) {
             $rows = DB::table('Service_Requests')
                 ->join('Service_Types', 'Service_Types.ServiceTypeID', '=', 'Service_Requests.ServiceTypeID')
                 ->leftJoin('Departments', 'Departments.DepartmentID', '=', 'Service_Types.DepartmentID')
@@ -317,7 +317,7 @@ class CitizensCacheService
     {
         $cacheKey = $this->buildNidCacheKey($search);
 
-        $cached = Cache::remember($cacheKey, self::TTL_LIST, function () use ($search) {
+        $cached = Cache::rememberForever($cacheKey, function () use ($search) {
             $row = DB::table('Persons')
                 ->where('Persons.NationalID', $search)
                 ->select('PersonID')
@@ -333,7 +333,7 @@ class CitizensCacheService
     {
         $cacheKey = $this->buildExactCacheKey($column, $search);
 
-        $cached = Cache::remember($cacheKey, self::TTL_LIST, function () use ($column, $search) {
+        $cached = Cache::rememberForever($cacheKey, function () use ($column, $search) {
             $row = DB::table('Persons')
                 ->where("Persons.{$column}", $search)
                 ->select('PersonID')

@@ -33,11 +33,11 @@ class WarmDashboardCache extends Command
     {
         $this->line('Caching counts...');
 
-        Cache::put('dashboard:persons_count', DB::table('Persons')->count(), 3600);
-        Cache::put('dashboard:governorates_count', DB::table('Governorates')->count(), 3600);
-        Cache::put('dashboard:payments_count', DB::table('Payments')->count(), 3600);
-        Cache::put('dashboard:requests_count', DB::table('Service_Requests')->count(), 3600);
-        Cache::put('dashboard:departments_count', DB::table('Departments')->count(), 3600);
+        Cache::forever('dashboard:persons_count', DB::table('Persons')->count());
+        Cache::forever('dashboard:governorates_count', DB::table('Governorates')->count());
+        Cache::forever('dashboard:payments_count', DB::table('Payments')->count());
+        Cache::forever('dashboard:requests_count', DB::table('Service_Requests')->count());
+        Cache::forever('dashboard:departments_count', DB::table('Departments')->count());
 
         $this->line('  Counts cached.');
     }
@@ -91,7 +91,7 @@ class WarmDashboardCache extends Command
             'top_service' => $row->top_service,
         ], $rows);
 
-        Cache::put('dashboard:governorates_chart', $data, 3600);
+        Cache::forever('dashboard:governorates_chart', $data);
         $this->line('  Governorates chart cached. ' . count($data) . ' governorates.');
     }
 
@@ -155,7 +155,7 @@ class WarmDashboardCache extends Command
             'per_day_count' => $perDayCount,
         ];
 
-        Cache::put('dashboard:payments_trend', $data, 3600);
+        Cache::forever('dashboard:payments_trend', $data);
         $this->line('  Payments trend cached.');
     }
 
@@ -190,7 +190,7 @@ class WarmDashboardCache extends Command
                 ];
             })->values()->toArray();
 
-        Cache::put('dashboard:department_stats', $data, 3600);
+        Cache::forever('dashboard:department_stats', $data);
         $this->line('  Department stats cached. ' . count($data) . ' departments.');
     }
 }

@@ -7,6 +7,9 @@
     <title>{{ config('app.name', 'Civitas') }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}" />
     @vite(['resources/css/app.css'])
+    <script>
+        document.documentElement.classList.toggle('dark', JSON.parse(localStorage.getItem('darkMode')) === true);
+    </script>
 </head>
 <body class="bg-white dark:bg-gray-950">
     @include('landing.partials.header')

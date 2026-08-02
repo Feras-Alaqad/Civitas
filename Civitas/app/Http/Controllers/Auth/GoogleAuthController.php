@@ -29,7 +29,7 @@ class GoogleAuthController extends Controller
         } catch (\Exception $e) {
             Log::error('Google OAuth failed: ' . $e->getMessage());
             return redirect()->route('login')
-                ->with('error', 'حدث خطأ أثناء تسجيل الدخول عبر Google.');
+                ->with('error', 'An error occurred while signing in with Google.');
         }
 
         $mode = session('google_auth_mode', 'login');
@@ -81,7 +81,7 @@ class GoogleAuthController extends Controller
 
             if (!$user) {
                 return redirect()->route('login')
-                    ->with('error', 'لا يوجد حساب مرتبط بهذا البريد الإلكتروني. يرجى إنشاء حساب أولاً.');
+                    ->with('error', 'No account is linked to this email address. Please create an account first.');
             }
 
             if (!$user->google_id) {
@@ -93,7 +93,7 @@ class GoogleAuthController extends Controller
 
             if (!$user->IsActive) {
                 return redirect()->route('login')
-                    ->with('error', 'حسابك غير مفعل. يرجى التواصل مع المسؤول.');
+                    ->with('error', 'Your account is not active. Please contact the administrator.');
             }
 
             Auth::login($user, remember: true);
@@ -110,7 +110,7 @@ class GoogleAuthController extends Controller
         } catch (\Exception $e) {
             Log::error('Google login callback error: ' . $e->getMessage());
             return redirect()->route('login')
-                ->with('error', 'حدث خطأ أثناء إعداد حسابك. يرجى المحاولة مرة أخرى.');
+                ->with('error', 'An error occurred while setting up your account. Please try again.');
         }
     }
 }

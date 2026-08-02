@@ -5,12 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Civitas') }} - Sign In</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script>
+        document.documentElement.classList.toggle('dark', JSON.parse(localStorage.getItem('darkMode')) === true);
+    </script>
 </head>
 <body class="min-h-screen flex items-center justify-center w-full dark:bg-gray-950 bg-gray-100 px-4 sm:px-6 lg:px-8">
     <div class="bg-white dark:bg-gray-900 shadow-md rounded-lg px-6 sm:px-8 py-6 sm:py-8 w-[400px] lg:w-[500px] max-w-[calc(100%-2rem)] mx-auto">
+        <div class="mb-4 flex justify-center">
+            <img class="h-12 w-auto dark:hidden" src="{{ asset('logo.svg') }}" alt="Civitas" />
+            <img class="hidden h-12 w-auto dark:block" src="{{ asset('logo-dark.svg') }}" alt="Civitas" />
+        </div>
         <h1 class="text-xl sm:text-2xl font-bold text-center mb-4 dark:text-gray-200">Welcome Back!</h1>
 
         @if (session('status'))

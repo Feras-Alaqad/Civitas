@@ -34,7 +34,7 @@ class DashboardController extends Controller
 
     private function cachedCount(string $key, string $table): int
     {
-        return (int) Cache::remember($key, 3600, fn () => DB::table($table)->count());
+        return (int) Cache::rememberForever($key, fn () => DB::table($table)->count());
     }
 
     private function computePaymentsTrend(): array
@@ -95,7 +95,7 @@ class DashboardController extends Controller
             'per_day_count'    => $perDayCount,
         ];
 
-        Cache::put('dashboard:payments_trend', $data, 3600);
+        Cache::forever('dashboard:payments_trend', $data);
 
         return $data;
     }
@@ -147,7 +147,7 @@ class DashboardController extends Controller
             'top_service' => $row->top_service,
         ], $rows);
 
-        Cache::put('dashboard:governorates_chart', $data, 3600);
+        Cache::forever('dashboard:governorates_chart', $data);
 
         return $data;
     }
@@ -181,7 +181,7 @@ class DashboardController extends Controller
                 ];
             })->values()->toArray();
 
-        Cache::put('dashboard:department_stats', $data, 3600);
+        Cache::forever('dashboard:department_stats', $data);
 
         return $data;
     }
