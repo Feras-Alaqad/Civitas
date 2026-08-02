@@ -38,9 +38,24 @@ class ServiceController extends Controller
 
         $serviceTypes = ServiceType::with('department')->orderBy('ServiceName')->get();
 
+        $countByDept = [];
+        foreach ($serviceTypes as $st) {
+            $name = $st->department?->DepartmentName ?? '—';
+            $countByDept[$name] = ($countByDept[$name] ?? 0) + 1;
+        }
+
+        $departments = collect($countByDept)
+            ->map(fn ($count, $name) => (object) [
+                'DepartmentName' => $name,
+                'ServiceCount' => $count,
+            ])
+            ->sortBy('DepartmentName')
+            ->values();
+
         return view('admin.service-application', [
             'person' => $person,
             'serviceTypes' => $serviceTypes,
+            'departments' => $departments,
         ]);
     }
 
@@ -59,7 +74,6 @@ class ServiceController extends Controller
 
         $requestId = Str::uuid();
         $paymentId = Str::uuid();
-        $attachmentIds = [];
 
         DB::beginTransaction();
 
@@ -78,7 +92,6 @@ class ServiceController extends Controller
                     $docType = $request->input('document_types')[$index] ?? 'Document';
                     $path = $file->store('attachments/' . $requestId, 'public');
                     $attId = Str::uuid();
-                    $attachmentIds[] = $attId;
 
                     Attachment::create([
                         'AttachmentID' => $attId,

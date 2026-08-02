@@ -17,7 +17,6 @@ class ImportDatabaseCsvJob implements ShouldQueue
 
     public $timeout = 7200;
 
-    private const FIRST_BATCH_SIZE = 10000;
     private const DB_CHUNK_SIZE = 500;
     private const MAX_RECORDS = 4000000;
 

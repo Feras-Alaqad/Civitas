@@ -25,16 +25,6 @@ class Person extends Model
         return $this->belongsTo(Nationality::class, 'NationalityID', 'NationalityID');
     }
 
-    public function getGovernorateNameAttribute(): ?string
-    {
-        return $this->governorate?->GovernorateName;
-    }
-
-    public function getNationalityNameAttribute(): ?string
-    {
-        return $this->nationality?->NationalityName;
-    }
-
     protected static function booted(): void
     {
         static::saving(function (Person $person) {

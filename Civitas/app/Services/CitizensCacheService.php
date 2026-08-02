@@ -47,33 +47,6 @@ class CitizensCacheService
         });
     }
 
-    public function getCachedSearchTotalCount(string $search): int
-    {
-        $cacheKey = 'citizens:search_total:' . md5($search);
-
-        return (int) Cache::remember($cacheKey, self::TTL_LIST, function () use ($search) {
-            $type = $this->detectSearchType($search);
-
-            if ($type === 'email') {
-                return DB::table('Persons')->where('Email', $search)->count();
-            }
-
-            if ($type === 'national_id') {
-                return DB::table('Persons')->where('NationalID', $search)->count();
-            }
-
-            if ($type === 'phone') {
-                return DB::table('Persons')->where('Phone', $search)->count();
-            }
-
-            $keywords = $this->buildFulltextKeywords($search);
-
-            return (int) DB::table('Persons')
-                ->whereRaw('MATCH(FullNameSearch) AGAINST(? IN BOOLEAN MODE)', [$keywords])
-                ->count();
-        });
-    }
-
     public function buildMeilisearchCacheKey(string $search, int $page): string
     {
         return 'citizens:meilisearch:' . md5($search) . ":{$page}";
@@ -86,12 +59,6 @@ class CitizensCacheService
         $cached = Cache::get($cacheKey);
 
         return $cached ? json_decode($cached, true) : null;
-    }
-
-    public function getCachedMeilisearchCursor(string $search, int $page): ?string
-    {
-        $data = $this->getCachedMeilisearchRows($search, $page);
-        return $data['cursor'] ?? null;
     }
 
     public function putCachedMeilisearchRows(string $search, int $page, array $data): void
@@ -111,44 +78,6 @@ class CitizensCacheService
     {
         $cacheKey = 'citizens:meilisearch_total:' . md5($search);
         Cache::put($cacheKey, $total, self::TTL_LIST);
-    }
-
-    public function searchMeilisearchDirectly(string $search, int $limit = 15, ?string $afterPersonId = null): array
-    {
-        $host = config('scout.meilisearch.host');
-        $key = config('scout.meilisearch.key');
-        $index = 'persons_index';
-
-        $payload = [
-            'q' => $search,
-            'limit' => $limit,
-            'attributesToRetrieve' => ['PersonID', 'FullName', 'NationalID', 'Gender', 'DateOfBirth', 'Phone', 'Email', 'Address', 'GovernorateID', 'NationalityID'],
-        ];
-
-        if ($afterPersonId !== null) {
-            $payload['filter'] = 'PersonID > "' . $afterPersonId . '"';
-        }
-
-        $ch = curl_init("{$host}/indexes/{$index}/search");
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                "Authorization: Bearer {$key}",
-            ],
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 10,
-        ]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200 || $response === false) {
-            return ['hits' => [], 'estimatedTotalHits' => 0];
-        }
-
-        return json_decode($response, true);
     }
 
     public function searchCachedRows(string $search, int $offset): array
@@ -300,70 +229,6 @@ class CitizensCacheService
             'rows' => $rows->take(self::PER_PAGE)->values()->all(),
             'hasMore' => $hasMore,
         ]), self::TTL_LIST);
-    }
-
-    public function warmPersonPage(string $personId): void
-    {
-        $cacheKey = $this->buildPersonCacheKey($personId);
-
-        $row = DB::table('Persons')
-            ->leftJoin('Governorates', 'Governorates.GovernorateID', '=', 'Persons.GovernorateID')
-            ->leftJoin('Cities', 'Cities.CityID', '=', 'Persons.CityID')
-            ->leftJoin('Nationalities', 'Nationalities.NationalityID', '=', 'Persons.NationalityID')
-            ->select(
-                'Persons.PersonID', 'Persons.FullName', 'Persons.NationalID',
-                'Persons.Gender', 'Persons.DateOfBirth', 'Persons.Phone',
-                'Persons.Email', 'Persons.Address',
-                'Governorates.GovernorateName', 'Cities.CityName', 'Nationalities.NationalityName',
-            )
-            ->where('Persons.PersonID', $personId)
-            ->first();
-
-        Cache::put($cacheKey, $row ? json_encode($row) : self::NULL_SENTINEL, self::TTL_PERSON);
-    }
-
-    public function warmServiceRequests(string $personId): void
-    {
-        $cacheKey = $this->buildRequestsCacheKey($personId);
-
-        $rows = DB::table('Service_Requests')
-            ->join('Service_Types', 'Service_Types.ServiceTypeID', '=', 'Service_Requests.ServiceTypeID')
-            ->leftJoin('Departments', 'Departments.DepartmentID', '=', 'Service_Types.DepartmentID')
-            ->where('Service_Requests.PersonID', $personId)
-            ->select(
-                'Service_Requests.RequestID', 'Service_Requests.RequestDate',
-                'Service_Requests.Status', 'Service_Requests.created_at', 'Service_Requests.updated_at',
-                'Service_Types.ServiceName', 'Service_Types.Fees', 'Service_Types.RequiredDocuments',
-                'Departments.DepartmentName',
-            )
-            ->orderByDesc('Service_Requests.RequestDate')
-            ->get();
-
-        Cache::put($cacheKey, json_encode($rows), self::TTL_PERSON);
-    }
-
-    public function warmExactNationalId(string $nationalId): void
-    {
-        $cacheKey = $this->buildNidCacheKey($nationalId);
-
-        $row = DB::table('Persons')
-            ->where('Persons.NationalID', $nationalId)
-            ->select('PersonID')
-            ->first();
-
-        Cache::put($cacheKey, $row ? json_encode($row) : self::NULL_SENTINEL, self::TTL_LIST);
-    }
-
-    public function warmExactMatch(string $column, string $search): void
-    {
-        $cacheKey = $this->buildExactCacheKey($column, $search);
-
-        $row = DB::table('Persons')
-            ->where("Persons.{$column}", $search)
-            ->select('PersonID')
-            ->first();
-
-        Cache::put($cacheKey, $row ? json_encode($row) : self::NULL_SENTINEL, self::TTL_LIST);
     }
 
     public function getCachedRows(string $search, int $offset): array

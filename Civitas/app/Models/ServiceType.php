@@ -32,9 +32,4 @@ class ServiceType extends Model
     {
         return $this->belongsTo(Department::class, 'DepartmentID', 'DepartmentID');
     }
-
-    public function getRequiredDocumentsListAttribute(): array
-    {
-        return array_filter(array_map('trim', explode(',', $this->RequiredDocuments ?? '')));
-    }
 }

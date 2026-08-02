@@ -8,9 +8,3 @@ Alpine.plugin(persist);
 Alpine.plugin(collapse);
 window.Alpine = Alpine;
 Alpine.start();
-
-import map01 from "./components/map-01";
-
-document.addEventListener("DOMContentLoaded", () => {
-  map01();
-});

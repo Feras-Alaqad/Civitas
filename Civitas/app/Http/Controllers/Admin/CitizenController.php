@@ -69,15 +69,11 @@ class CitizenController extends Controller
                     $page,
                     ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $request->only('search')]
                 ),
-                'next_cursor' => null,
-                'prev_cursor' => null,
             ];
         }
 
         return view('admin.citizens', [
             'citizens' => $result['citizens'],
-            'nextCursor' => $result['next_cursor'],
-            'prevCursor' => $result['prev_cursor'],
             'currentPage' => $page,
             'selectedPerson' => null,
             'serviceRequests' => collect([]),
@@ -121,8 +117,6 @@ class CitizenController extends Controller
 
         return [
             'citizens' => $paginator,
-            'next_cursor' => $paginator->hasMorePages() ? '__meili__' : null,
-            'prev_cursor' => $page > 1,
         ];
     }
 
@@ -148,8 +142,6 @@ class CitizenController extends Controller
 
         return [
             'citizens' => $paginator,
-            'next_cursor' => $result['hasMore'] ? '__db__' : null,
-            'prev_cursor' => $page > 1 ? '__db__' : null,
         ];
     }
 
@@ -184,8 +176,6 @@ class CitizenController extends Controller
             'selectedPerson' => $person,
             'serviceRequests' => $this->cacheService->getCachedServiceRequests($personId),
             'citizens' => null,
-            'nextCursor' => null,
-            'prevCursor' => null,
             'currentPage' => 1,
             'search' => $search,
             'loadTimeMs' => round((microtime(true) - $start) * 1000, 2),

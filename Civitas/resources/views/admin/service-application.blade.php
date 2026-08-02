@@ -45,6 +45,148 @@
     .service-type-card.selected {
         animation: glowPulse 1.5s ease-in-out infinite;
     }
+
+    .department-filter {
+        display: flex;
+        align-items: stretch;
+        gap: 12px;
+        overflow-x: auto;
+        padding: 4px 4px 12px;
+        scrollbar-width: thin;
+        scrollbar-color: #d1d5db transparent;
+    }
+    .department-filter::-webkit-scrollbar { height: 6px; }
+    .department-filter::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
+    .department-filter::-webkit-scrollbar-track { background: transparent; }
+
+    .department-tab {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-width: 136px;
+        padding: 18px 18px 14px;
+        border-radius: 16px;
+        border: 2px solid #e5e7eb;
+        background: #fff;
+        color: #6b7280;
+        cursor: pointer;
+        flex-shrink: 0;
+        font-family: inherit;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    .department-tab:hover {
+        border-color: #93c5fd;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px -8px rgba(59, 130, 246, 0.3);
+    }
+    .department-tab::after {
+        content: '';
+        position: absolute;
+        bottom: 9px;
+        left: 50%;
+        transform: translateX(-50%) scale(0);
+        width: 5px;
+        height: 5px;
+        border-radius: 999px;
+        background: #2563eb;
+        transition: transform 0.3s ease;
+    }
+    .department-tab.active {
+        border-color: #2563eb;
+        background: linear-gradient(150deg, #eff6ff 0%, #dbeafe 100%);
+        color: #1d4ed8;
+        transform: translateY(-3px);
+        box-shadow: 0 14px 30px -8px rgba(37, 99, 235, 0.45);
+    }
+    .department-tab.active::after { transform: translateX(-50%) scale(1); }
+
+    .department-tab .tab-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 13px;
+        background: #f3f4f6;
+        color: #6b7280;
+        transition: all 0.3s ease;
+    }
+    .department-tab:hover .tab-icon {
+        background: #dbeafe;
+        color: #2563eb;
+        transform: scale(1.08) rotate(-4deg);
+    }
+    .department-tab.active .tab-icon {
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: #fff;
+        box-shadow: 0 8px 18px -5px rgba(37, 99, 235, 0.6);
+    }
+    .department-tab .tab-label {
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.25;
+        text-align: center;
+    }
+    .department-tab .tab-count {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        background: #f3f4f6;
+        color: #6b7280;
+        transition: all 0.3s ease;
+    }
+    .department-tab.active .tab-count {
+        background: #2563eb;
+        color: #fff;
+    }
+
+    .dark .department-tab {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: #374151;
+        color: #9ca3af;
+    }
+    .dark .department-tab:hover {
+        border-color: rgba(59, 130, 246, 0.5);
+    }
+    .dark .department-tab .tab-icon {
+        background: rgba(255, 255, 255, 0.06);
+        color: #9ca3af;
+    }
+    .dark .department-tab:hover .tab-icon {
+        background: rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+    }
+    .dark .department-tab .tab-count {
+        background: rgba(255, 255, 255, 0.08);
+        color: #9ca3af;
+    }
+    .dark .department-tab.active {
+        background: rgba(37, 99, 235, 0.15);
+        border-color: #3b82f6;
+        color: #93c5fd;
+        box-shadow: 0 16px 32px -10px rgba(59, 130, 246, 0.55);
+    }
+    .dark .department-tab.active .tab-icon {
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: #fff;
+    }
+    .dark .department-tab.active .tab-count {
+        background: #3b82f6;
+        color: #fff;
+    }
 </style>
 <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
 
@@ -79,7 +221,41 @@
 
             {{-- Step 1: Select Service Type --}}
             <div>
-                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Select Service Type</label>
+                <div class="mb-4">
+                    <div class="mb-3 flex items-center justify-between">
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Filter by Department</label>
+                        <span id="serviceCount" class="text-[11px] font-medium text-gray-400 dark:text-gray-500"></span>
+                    </div>
+                    <div class="department-filter" id="departmentFilter">
+                        @php
+                        $icons = [
+                            'all' => '<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>',
+                            'passport' => '<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>',
+                            'finance' => '<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm0 4h16M8 13h.01M16 13h.01M8 6h8"/></svg>',
+                            'legal' => '<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m0-3H5.5a2 2 0 01-1.8-3l2.3-4h12l2.3 4a2 2 0 01-1.8 3H12zm0-15L5.5 6.5 12 8.5 18.5 6.5 12 3z"/></svg>',
+                            'folder' => '<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>',
+                        ];
+                        $deptIconKey = [
+                            'قسم الجوازات' => 'passport',
+                            'قسم المالية' => 'finance',
+                            'الشؤون القانونية' => 'legal',
+                            '—' => 'folder',
+                        ];
+                        @endphp
+                        <button type="button" class="department-tab active" data-dept="all">
+                            <span class="tab-icon">{!! $icons['all'] !!}</span>
+                            <span class="tab-label">All Services</span>
+                            <span class="tab-count">{{ $serviceTypes->count() }}</span>
+                        </button>
+                        @foreach($departments as $dept)
+                        <button type="button" class="department-tab" data-dept="{{ $dept->DepartmentName }}">
+                            <span class="tab-icon">{!! $icons[$deptIconKey[$dept->DepartmentName] ?? 'folder'] !!}</span>
+                            <span class="tab-label">{{ $dept->DepartmentName }}</span>
+                            <span class="tab-count">{{ $dept->ServiceCount }}</span>
+                        </button>
+                        @endforeach
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="serviceTypeGrid">
                     @foreach($serviceTypes as $st)
                     <label class="service-type-card group relative flex cursor-pointer flex-col rounded-xl border-2 border-gray-200 bg-white p-4 transition-all duration-300 ease-out hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-blue-500/50 dark:hover:shadow-lg dark:hover:shadow-blue-500/5 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 has-[:checked]:shadow-lg has-[:checked]:shadow-blue-500/10 has-[:checked]:scale-[1.02] dark:has-[:checked]:border-blue-400/60 dark:has-[:checked]:bg-blue-500/10 dark:has-[:checked]:shadow-lg dark:has-[:checked]:shadow-blue-500/20"
@@ -106,6 +282,9 @@
                         @endif
                     </label>
                     @endforeach
+                </div>
+                <div id="noServicesMsg" class="hidden rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400 dark:border-gray-700">
+                    No services found for this department.
                 </div>
             </div>
 
@@ -144,6 +323,12 @@
                         <input type="file" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png" class="hidden">
                     </div>
                     <div id="fileList" class="mt-3 space-y-2"></div>
+                    <p id="fileErrorMsg" class="mt-2 hidden items-center gap-1.5 text-xs font-medium text-red-500 dark:text-red-400">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Please upload at least one document before proceeding to payment.
+                    </p>
                 </div>
             </div>
 
@@ -348,6 +533,55 @@ document.querySelectorAll('.service-type-card').forEach(card => {
     });
 });
 
+const departmentFilter = document.getElementById('departmentFilter');
+const departmentTabs = Array.from(departmentFilter.querySelectorAll('.department-tab'));
+const serviceCards = Array.from(document.querySelectorAll('.service-type-card'));
+const noServicesMsg = document.getElementById('noServicesMsg');
+const serviceCount = document.getElementById('serviceCount');
+
+function getActiveDepartment() {
+    const active = departmentTabs.find(t => t.classList.contains('active'));
+    return active ? active.dataset.dept : 'all';
+}
+
+function applyDepartmentFilter() {
+    const selected = getActiveDepartment();
+    let visibleCount = 0;
+
+    serviceCards.forEach(card => {
+        const match = selected === 'all' || card.dataset.department === selected;
+        card.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
+    });
+
+    if (selectedService && selected !== 'all' && selectedService.department !== selected) {
+        resetServiceSelection();
+    }
+
+    noServicesMsg.classList.toggle('hidden', visibleCount > 0);
+    serviceCount.textContent = visibleCount + ' of ' + serviceCards.length + ' services';
+}
+
+function resetServiceSelection() {
+    selectedService = null;
+    serviceCards.forEach(c => c.classList.remove('selected'));
+    const radio = document.querySelector('input[name="service_type_id"]:checked');
+    if (radio) radio.checked = false;
+    document.getElementById('serviceDetails').classList.add('hidden');
+    document.getElementById('submitSection').classList.add('hidden');
+}
+
+departmentTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        if (tab.classList.contains('active')) return;
+        departmentTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        applyDepartmentFilter();
+    });
+});
+
+applyDepartmentFilter();
+
 function createRipple(event, element) {
     const existing = element.querySelector('.ripple-effect');
     if (existing) existing.remove();
@@ -381,6 +615,12 @@ fileDropZone.addEventListener('drop', e => {
 
 fileInput.addEventListener('change', () => handleFiles(fileInput.files));
 
+function clearFileError() {
+    document.getElementById('fileErrorMsg').classList.add('hidden');
+    document.getElementById('fileErrorMsg').classList.remove('flex');
+    fileDropZone.classList.remove('border-red-400', 'bg-red-50', 'dark:border-red-500/50', 'dark:bg-red-500/10');
+}
+
 function handleFiles(files) {
     Array.from(files).forEach(file => {
         if (file.size > 10 * 1024 * 1024) {
@@ -390,6 +630,7 @@ function handleFiles(files) {
         uploadedFiles.push(file);
     });
     renderFileList();
+    if (uploadedFiles.length > 0) clearFileError();
 }
 
 function renderFileList() {
@@ -413,11 +654,21 @@ function renderFileList() {
 function removeFile(index) {
     uploadedFiles.splice(index, 1);
     renderFileList();
+    if (uploadedFiles.length === 0) clearFileError();
 }
 
 function showPaymentModal() {
     if (!selectedService) {
         alert('Please select a service type first.');
+        return;
+    }
+
+    if (uploadedFiles.length === 0) {
+        const errorMsg = document.getElementById('fileErrorMsg');
+        errorMsg.classList.remove('hidden');
+        errorMsg.classList.add('flex');
+        fileDropZone.classList.add('border-red-400', 'bg-red-50', 'dark:border-red-500/50', 'dark:bg-red-500/10');
+        document.getElementById('fileInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
     }
 

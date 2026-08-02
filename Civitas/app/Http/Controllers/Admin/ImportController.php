@@ -77,23 +77,6 @@ class ImportController extends Controller
         $batchSize = 50;
         $batches = array_chunk($rows, $batchSize);
 
-        $columnMap = [
-            'PersonID' => 'PersonID',
-            'FirstName' => null,
-            'FatherName' => null,
-            'MotherName' => null,
-            'FamilyName' => null,
-            'CityID' => 'CityID',
-            'GovernorateID' => 'GovernorateID',
-            'NationalityID' => 'NationalityID',
-            'Phone' => 'Phone',
-            'Email' => 'Email',
-            'DateOfBirth' => 'DateOfBirth',
-            'NationalID' => 'NationalID',
-            'Address' => 'Address',
-            'Gender' => 'Gender',
-        ];
-
         Cache::put("import.{$importId}", [
             'percent' => 0,
             'processed' => 0,
