@@ -14,6 +14,9 @@
 /.zed
 /auth.json
 /node_modules
+/data.ms
+/meilisearch
+/database.csv
 /public/build
 /public/fonts-manifest.dev.json
 /public/hot

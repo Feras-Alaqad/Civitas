@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') | {{ config('app.name', 'Civitas') }}</title>
+    <title>@yield('title', 'Dashboard') | CivitasAdmin</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     @vite(['resources/css/tailadmin.css', 'resources/js/tailadmin.js'])
     @stack('styles')
 </head>
@@ -21,7 +22,7 @@
     <div class="flex h-screen overflow-hidden">
         @include('admin.partials.sidebar')
 
-        <div class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
+        <div id="scroll-container" :class="sidebarToggle ? 'lg:ml-[290px]' : 'lg:ml-0'" class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto transition-all duration-300">
             @include('admin.partials.overlay')
             @include('admin.partials.header')
 
@@ -36,6 +37,20 @@
         </div>
     </div>
 
+    @stack('modals')
     @stack('scripts')
+    <script>
+        (function() {
+            var c = document.getElementById('scroll-container');
+            var key = 'scroll_pos_' + location.pathname;
+            var saved = sessionStorage.getItem(key);
+            if (saved) {
+                c.scrollTop = parseInt(saved, 10);
+            }
+            c.addEventListener('scroll', function() {
+                sessionStorage.setItem(key, c.scrollTop);
+            });
+        })();
+    </script>
 </body>
 </html>

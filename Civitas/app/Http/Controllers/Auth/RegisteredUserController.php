@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,7 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'Username' => ['required', 'string', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -31,6 +33,7 @@ class RegisteredUserController extends Controller
 
         $user = User::create([
             'Username' => $request->Username,
+            'email' => $request->email,
             'password' => $request->password,
             'RoleID' => $adminRole?->RoleID,
             'IsActive' => 1,
@@ -39,6 +42,14 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
+
+        AuditLog::create([
+            'UserID' => $user->id,
+            'ActionType' => 'Register',
+            'Description' => "New admin user registered: {$request->Username}",
+            'Timestamp' => now(),
+            'IPAddress' => $request->ip(),
+        ]);
 
         return redirect(route('admin.dashboard', absolute: false));
     }

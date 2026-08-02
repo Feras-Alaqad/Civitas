@@ -40,18 +40,18 @@
   --color-white: #ffffff;
   --color-black: #101828;
 
-  --color-brand-25: #f2f7ff;
-  --color-brand-50: #ecf3ff;
-  --color-brand-100: #dde9ff;
-  --color-brand-200: #c2d6ff;
-  --color-brand-300: #9cb9ff;
-  --color-brand-400: #7592ff;
-  --color-brand-500: #465fff;
-  --color-brand-600: #3641f5;
-  --color-brand-700: #2a31d8;
-  --color-brand-800: #252dae;
-  --color-brand-900: #262e89;
-  --color-brand-950: #161950;
+  --color-brand-25: #fefcf5;
+  --color-brand-50: #fdf8ec;
+  --color-brand-100: #faf0d4;
+  --color-brand-200: #f5e0a9;
+  --color-brand-300: #eecb76;
+  --color-brand-400: #ddb454;
+  --color-brand-500: #c9a96e;
+  --color-brand-600: #b8924f;
+  --color-brand-700: #9a763e;
+  --color-brand-800: #7f5f32;
+  --color-brand-900: #674d28;
+  --color-brand-950: #3d2d16;
 
   --color-blue-light-25: #f5fbff;
   --color-blue-light-50: #f0f9ff;
@@ -135,13 +135,25 @@
   --color-theme-pink-500: #ee46bc;
   --color-theme-purple-500: #7a5af8;
 
+  --color-beige-50: #fdfbf7;
+  --color-beige-100: #f8f3e9;
+  --color-beige-200: #f0e6d1;
+  --color-beige-300: #e5d4b3;
+  --color-beige-400: #d6bd8f;
+  --color-beige-500: #c9a96e;
+  --color-beige-600: #b8924f;
+  --color-beige-700: #9a763e;
+  --color-beige-800: #7f5f32;
+  --color-beige-900: #674d28;
+  --color-beige-950: #3d2d16;
+
   --shadow-theme-md: 0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06);
   --shadow-theme-lg: 0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03);
   --shadow-theme-sm: 0px 1px 3px 0px rgba(16, 24, 40, 0.1), 0px 1px 2px 0px rgba(16, 24, 40, 0.06);
   --shadow-theme-xs: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
   --shadow-theme-xl: 0px 20px 24px -4px rgba(16, 24, 40, 0.08), 0px 8px 8px -4px rgba(16, 24, 40, 0.03);
   --shadow-datepicker: -5px 0 0 #262d3c, 5px 0 0 #262d3c;
-  --shadow-focus-ring: 0px 0px 0px 4px rgba(70, 95, 255, 0.12);
+  --shadow-focus-ring: 0px 0px 0px 4px rgba(201, 169, 110, 0.12);
   --shadow-slider-navigation: 0px 1px 2px 0px rgba(16, 24, 40, 0.1), 0px 1px 3px 0px rgba(16, 24, 40, 0.1);
   --shadow-tooltip: 0px 4px 6px -2px rgba(16, 24, 40, 0.05), -8px 0px 20px 8px rgba(16, 24, 40, 0.05);
 

@@ -1,17 +1,154 @@
 <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
-    <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Weekly Sales</h3>
-        <div x-data="{openDropDown: false}" class="relative h-fit">
-            <button @click="openDropDown = !openDropDown" :class="openDropDown ? 'text-gray-700 dark:text-white' : 'text-gray-400 hover:text-gray-700 dark:hover:text-white'">
-                <svg class="fill-current" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" clip-rule="evenodd" d="M10.2441 6C10.2441 5.0335 11.0276 4.25 11.9941 4.25H12.0041C12.9706 4.25 13.7541 5.0335 13.7541 6C13.7541 6.9665 12.9706 7.75 12.0041 7.75H11.9941C11.0276 7.75 10.2441 6.9665 10.2441 6ZM10.2441 18C10.2441 17.0335 11.0276 16.25 11.9941 16.25H12.0041C12.9706 16.25 13.7541 17.0335 13.7541 18C13.7541 18.9665 12.9706 19.75 12.0041 19.75H11.9941C11.0276 19.75 10.2441 18.9665 10.2441 18ZM11.9941 10.25C11.0276 10.25 10.2441 11.0335 10.2441 12C10.2441 12.9665 11.0276 13.75 11.9941 13.75H12.0041C12.9706 13.75 13.7541 12.9665 13.7541 12C13.7541 11.0335 12.9706 10.25 12.0041 10.25H11.9941Z" fill=""/>
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Department Completion</h3>
+    </div>
+
+    @php
+        $deptData = $departmentStats ?? collect([]);
+        $labels = $deptData->pluck('department')->toArray();
+        $completedData = $deptData->pluck('completed_pct')->toArray();
+        $pendingData = $deptData->pluck('pending_pct')->toArray();
+    @endphp
+
+    <div style="position: relative; width: 100%; height: 300px;">
+        <canvas id="deptCompletion"></canvas>
+    </div>
+</div>
+
+{{-- Modal --}}
+<div id="deptModal"
+     class="fixed inset-0 z-[999] hidden items-center justify-center bg-black/45"
+     style="display: none;">
+    <div class="w-[340px] max-w-[90%] rounded-xl bg-white p-6 shadow-lg dark:bg-gray-800">
+        <div class="mb-4 flex items-center justify-between">
+            <span id="modalTitle" class="text-lg font-semibold text-gray-800 dark:text-white/90"></span>
+            <button id="modalCloseBtn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
-            <div x-show="openDropDown" @click.outside="openDropDown = false" class="absolute right-0 z-40 w-40 p-2 space-y-1 bg-white border border-gray-200 top-full rounded-2xl shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark">
-                <button class="flex w-full px-3 py-2 font-medium text-left text-gray-500 rounded-lg text-theme-xs hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300">View More</button>
-                <button class="flex w-full px-3 py-2 font-medium text-left text-gray-500 rounded-lg text-theme-xs hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300">Delete</button>
-            </div>
         </div>
+        <div id="modalBody" class="flex flex-col gap-3"></div>
     </div>
-    <div id="chartTwo" class="-ml-5"></div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const labels = @json($labels);
+        const completedData = @json($completedData);
+        const pendingData = @json($pendingData);
+        const allDeptData = @json($departmentStats);
+
+        const chart = new Chart(document.getElementById('deptCompletion'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Completed %',
+                        data: completedData,
+                        backgroundColor: '#10b981',
+                        borderRadius: 4,
+                        barPercentage: 0.4,
+                        categoryPercentage: 0.6,
+                    },
+                    {
+                        label: 'Pending %',
+                        data: pendingData,
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 4,
+                        barPercentage: 0.4,
+                        categoryPercentage: 0.6,
+                    },
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: { family: 'Outfit, sans-serif', size: 12 },
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 16,
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                return ctx.dataset.label + ': ' + ctx.parsed.x + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        ticks: {
+                            callback: function (value) {
+                                return value + '%';
+                            },
+                            stepSize: 25,
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { display: false },
+                        ticks: {
+                            font: { size: 12 },
+                        }
+                    }
+                },
+                onClick: function (e) {
+                    const bars = chart.getElementsAtEventForMode(e, 'index', { intersect: true }, false);
+                    if (bars.length === 0) return;
+                    const idx = bars[0].index;
+                    const dept = allDeptData[idx];
+                    if (!dept) return;
+
+                    const avgTime = dept.avg_completion_time
+                        ? dept.avg_completion_time + ' hours'
+                        : '—';
+
+                    document.getElementById('modalTitle').textContent = dept.department;
+                    document.getElementById('modalBody').innerHTML = `
+                        <div class="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 dark:bg-gray-700/50">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Total Requests</span>
+                            <span class="text-sm font-semibold text-gray-800 dark:text-white/90">${dept.total}</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-lg bg-green-50 px-4 py-3 dark:bg-green-900/20">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Completed</span>
+                            <span class="text-sm font-semibold text-green-600 dark:text-green-400">${dept.completed}</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-lg bg-amber-50 px-4 py-3 dark:bg-amber-900/20">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Pending</span>
+                            <span class="text-sm font-semibold text-amber-600 dark:text-amber-400">${dept.pending}</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-lg bg-blue-50 px-4 py-3 dark:bg-blue-900/20">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Avg Completion Time</span>
+                            <span class="text-sm font-semibold text-blue-600 dark:text-blue-400">${avgTime}</span>
+                        </div>
+                    `;
+
+                    const modal = document.getElementById('deptModal');
+                    modal.style.display = 'flex';
+                }
+            }
+        });
+
+        document.getElementById('modalCloseBtn').addEventListener('click', function () {
+            document.getElementById('deptModal').style.display = 'none';
+        });
+
+        document.getElementById('deptModal').addEventListener('click', function (e) {
+            if (e.target === this) this.style.display = 'none';
+        });
+    });
+</script>

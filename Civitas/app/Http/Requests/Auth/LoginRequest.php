@@ -2,9 +2,8 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\AuditLog;
 use App\Models\User;
-use Illuminate\Auth\Events\Lockout;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -29,12 +28,18 @@ class LoginRequest extends FormRequest
 
     public function authenticate(): void
     {
-        $this->ensureIsNotRateLimited();
-
         $user = User::where('Username', $this->string('Username'))->first();
 
         if (! $user || ! Auth::attempt($this->only('Username', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+            RateLimiter::hit($this->throttleKey(), 60);
+
+            AuditLog::create([
+                'UserID' => null,
+                'ActionType' => 'Failed Login Attempt',
+                'Description' => 'Username: ' . $this->string('Username'),
+                'IPAddress' => $this->ip(),
+                'Timestamp' => now(),
+            ]);
 
             throw ValidationException::withMessages([
                 'Username' => trans('auth.failed'),
@@ -45,7 +50,15 @@ class LoginRequest extends FormRequest
 
         if (! $adminRole || $user->RoleID !== $adminRole->RoleID) {
             Auth::logout();
-            RateLimiter::hit($this->throttleKey());
+            RateLimiter::hit($this->throttleKey(), 60);
+
+            AuditLog::create([
+                'UserID' => null,
+                'ActionType' => 'Failed Login Attempt',
+                'Description' => 'Non-admin access attempt: ' . $this->string('Username'),
+                'IPAddress' => $this->ip(),
+                'Timestamp' => now(),
+            ]);
 
             throw ValidationException::withMessages([
                 'Username' => 'You do not have admin access.',
@@ -55,26 +68,8 @@ class LoginRequest extends FormRequest
         RateLimiter::clear($this->throttleKey());
     }
 
-    public function ensureIsNotRateLimited(): void
-    {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
-            return;
-        }
-
-        event(new Lockout($this));
-
-        $seconds = RateLimiter::availableIn($this->throttleKey());
-
-        throw ValidationException::withMessages([
-            'Username' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
-        ]);
-    }
-
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('Username')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('Username')) . '|' . $this->ip());
     }
 }

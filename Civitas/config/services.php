@@ -35,4 +35,22 @@ return [
         ],
     ],
 
+    'paypal' => [
+        'mode' => env('PAYPAL_MODE', 'sandbox'),
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'client_secret' => env('PAYPAL_CLIENT_SECRET'),
+        'guzzle' => [
+            'verify' => filter_var(env('PAYPAL_SSL_VERIFY', 'true'), FILTER_VALIDATE_BOOLEAN),
+        ],
+    ],
+
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+        'guzzle' => [
+            'verify' => filter_var(env('GOOGLE_SSL_VERIFY', 'true'), FILTER_VALIDATE_BOOLEAN),
+        ],
+    ],
+
 ];

@@ -18,6 +18,9 @@ class AuditLog extends Model
     protected $fillable = [
         'UserID',
         'ActionType',
+        'Description',
+        'ReferenceID',
+        'Timestamp',
         'IPAddress',
     ];
 }

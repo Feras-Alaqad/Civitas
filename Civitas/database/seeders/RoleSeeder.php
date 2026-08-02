@@ -10,10 +10,16 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('roles')->insert([
-            'RoleID' => Str::uuid(),
-            'RoleName' => 'Admin',
-            'Permissions' => 'all',
-        ]);
+        $roles = [
+            ['RoleName' => 'DataEntry', 'Permissions' => 'import,view_persons,create_service'],
+            ['RoleName' => 'FinancialReviewer', 'Permissions' => 'view_reports,review_services,export_data'],
+        ];
+
+        foreach ($roles as $role) {
+            DB::table('roles')->updateOrInsert(
+                ['RoleName' => $role['RoleName']],
+                array_merge($role, ['RoleID' => Str::uuid()])
+            );
+        }
     }
 }

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Template built with tailwindcss using Tailus blocks v2" />
     <title>{{ config('app.name', 'Civitas') }}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('landing/favicon.svg') }}" />
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}" />
     @vite(['resources/css/app.css'])
 </head>
 <body class="bg-white dark:bg-gray-950">

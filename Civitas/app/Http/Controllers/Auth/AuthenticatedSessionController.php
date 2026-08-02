@@ -8,6 +8,8 @@ use App\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
@@ -29,9 +31,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        AuditLog::create([
+        DB::table('audit_logs')->insert([
+            'LogID' => \Str::uuid()->toString(),
             'UserID' => Auth::id(),
             'ActionType' => 'Login',
+            'Description' => 'Username: ' . $request->string('Username'),
+            'Timestamp' => now(),
             'IPAddress' => $request->ip(),
         ]);
 
@@ -43,6 +48,22 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        try {
+            $user = Auth::user();
+            if ($user) {
+                DB::table('audit_logs')->insert([
+                    'LogID' => \Str::uuid()->toString(),
+                    'UserID' => $user->id,
+                    'ActionType' => 'Logout',
+                    'Description' => 'Username: ' . $user->Username,
+                    'Timestamp' => now(),
+                    'IPAddress' => $request->ip(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Logout audit log failed: ' . $e->getMessage());
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
