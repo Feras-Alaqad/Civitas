@@ -21,7 +21,9 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 
 COPY . .
-COPY --from=frontend /app/public/build /app/public/build
+COPY --from=frontend /app/public/build ./public/build
+
+RUN ls -la public/build && ls -la public/build/assets
 COPY docker-start.sh /usr/local/bin/docker-start.sh
 
 RUN chmod +x /usr/local/bin/docker-start.sh \
