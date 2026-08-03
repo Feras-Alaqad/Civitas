@@ -1,5 +1,6 @@
 .env
-.env.*
+.env.backup
+.env.production
 .git
 .gitignore
 /vendor

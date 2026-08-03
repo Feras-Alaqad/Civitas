@@ -22,12 +22,15 @@ WORKDIR /app
 
 COPY . .
 COPY --from=frontend /app/public/build /app/public/build
+COPY .env.example .env
+COPY docker-start.sh /usr/local/bin/docker-start.sh
 
-RUN composer install \
+RUN chmod +x /usr/local/bin/docker-start.sh \
+    && composer install \
     --optimize-autoloader \
     --no-dev \
     --no-interaction
 
 EXPOSE 80
 
-CMD ["sh", "-c", "php artisan migrate --force --no-interaction && php artisan storage:link && frankenphp php-server -r public"]
+CMD ["/usr/local/bin/docker-start.sh"]
