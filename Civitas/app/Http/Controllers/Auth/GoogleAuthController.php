@@ -27,7 +27,7 @@ class GoogleAuthController extends Controller
         try {
             $googleUser = Socialite::driver('google')->user();
         } catch (\Exception $e) {
-            Log::error('Google OAuth failed: ' . $e->getMessage());
+            Log::error('Google OAuth failed: ' . get_class($e) . ' - ' . $e->getMessage() . ' - URL: ' . request()->fullUrl() . ' - session has google_auth_mode: ' . (session()->has('google_auth_mode') ? 'yes' : 'no'));
             return redirect()->route('login')
                 ->with('error', 'An error occurred while signing in with Google.');
         }
@@ -108,7 +108,7 @@ class GoogleAuthController extends Controller
 
             return redirect()->route('admin.dashboard');
         } catch (\Exception $e) {
-            Log::error('Google login callback error: ' . $e->getMessage());
+            Log::error('Google login callback error: ' . get_class($e) . ' - ' . $e->getMessage() . ' - URL: ' . request()->fullUrl());
             return redirect()->route('login')
                 ->with('error', 'An error occurred while setting up your account. Please try again.');
         }
