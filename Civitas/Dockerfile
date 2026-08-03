@@ -22,7 +22,6 @@ WORKDIR /app
 
 COPY . .
 COPY --from=frontend /app/public/build /app/public/build
-COPY .env.example .env
 COPY docker-start.sh /usr/local/bin/docker-start.sh
 
 RUN chmod +x /usr/local/bin/docker-start.sh \
