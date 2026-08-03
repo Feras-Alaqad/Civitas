@@ -13,4 +13,7 @@ php artisan optimize:clear || true
 
 php artisan storage:link || true
 
+php artisan queue:work --sleep=1 --tries=3 > /tmp/queue.log 2>&1 &
+php artisan schedule:work > /tmp/schedule.log 2>&1 &
+
 exec frankenphp php-server -r public
