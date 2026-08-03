@@ -15,10 +15,10 @@ class AuditController extends Controller
 
         $query = DB::table('audit_logs')
             ->join('users', 'audit_logs.UserID', '=', 'users.id')
-            ->leftJoin('service_requests', 'audit_logs.ReferenceID', '=', 'service_requests.RequestID')
-            ->leftJoin('persons', 'service_requests.PersonID', '=', 'persons.PersonID')
-            ->leftJoin('service_types', 'service_requests.ServiceTypeID', '=', 'service_types.ServiceTypeID')
-            ->leftJoin('payments', 'service_requests.RequestID', '=', 'payments.RequestID')
+            ->leftJoin('Service_Requests', 'audit_logs.ReferenceID', '=', 'Service_Requests.RequestID')
+            ->leftJoin('Persons', 'Service_Requests.PersonID', '=', 'Persons.PersonID')
+            ->leftJoin('Service_Types', 'Service_Requests.ServiceTypeID', '=', 'Service_Types.ServiceTypeID')
+            ->leftJoin('Payments', 'Service_Requests.RequestID', '=', 'Payments.RequestID')
             ->select(
                 'audit_logs.LogID',
                 'audit_logs.ActionType',
@@ -28,13 +28,13 @@ class AuditController extends Controller
                 'audit_logs.IPAddress',
                 'users.Username',
                 'users.avatar',
-                'persons.FullName',
-                'service_types.ServiceName',
-                'service_requests.Status as RequestStatus',
-                'service_requests.RequestDate',
-                'payments.Status as PaymentStatus',
-                'payments.Amount',
-                'payments.ReceiptNumber'
+                'Persons.FullName',
+                'Service_Types.ServiceName',
+                'Service_Requests.Status as RequestStatus',
+                'Service_Requests.RequestDate',
+                'Payments.Status as PaymentStatus',
+                'Payments.Amount',
+                'Payments.ReceiptNumber'
             );
 
         $search = trim((string) $request->input('search', ''));
@@ -42,7 +42,7 @@ class AuditController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('audit_logs.Description', 'LIKE', "%{$search}%")
                   ->orWhere('users.Username', 'LIKE', "%{$search}%")
-                  ->orWhere('persons.FullName', 'LIKE', "%{$search}%")
+                  ->orWhere('Persons.FullName', 'LIKE', "%{$search}%")
                   ->orWhere('audit_logs.IPAddress', 'LIKE', "%{$search}%");
             });
         }
@@ -54,7 +54,7 @@ class AuditController extends Controller
 
         $status = trim((string) $request->input('status', ''));
         if ($status !== '') {
-            $query->where('service_requests.Status', '=', $status);
+            $query->where('Service_Requests.Status', '=', $status);
         }
 
         $dateFrom = trim((string) $request->input('date_from', ''));
@@ -126,32 +126,32 @@ class AuditController extends Controller
         $attachments = collect();
 
         if ($reqId) {
-            $serviceRequest = DB::table('service_requests')
-                ->leftJoin('persons', 'service_requests.PersonID', '=', 'persons.PersonID')
-                ->leftJoin('service_types', 'service_requests.ServiceTypeID', '=', 'service_types.ServiceTypeID')
-                ->leftJoin('departments', 'service_types.DepartmentID', '=', 'departments.DepartmentID')
-                ->where('service_requests.RequestID', $reqId)
+            $serviceRequest = DB::table('Service_Requests')
+                ->leftJoin('Persons', 'Service_Requests.PersonID', '=', 'Persons.PersonID')
+                ->leftJoin('Service_Types', 'Service_Requests.ServiceTypeID', '=', 'Service_Types.ServiceTypeID')
+                ->leftJoin('Departments', 'Service_Types.DepartmentID', '=', 'Departments.DepartmentID')
+                ->where('Service_Requests.RequestID', $reqId)
                 ->select(
-                    'service_requests.*',
-                    'persons.FullName',
-                    'persons.NationalID',
-                    'persons.Phone',
-                    'persons.Email',
-                    'service_types.ServiceName',
-                    'service_types.Fees',
-                    'service_types.RequiredDocuments',
-                    'departments.DepartmentName'
+                    'Service_Requests.*',
+                    'Persons.FullName',
+                    'Persons.NationalID',
+                    'Persons.Phone',
+                    'Persons.Email',
+                    'Service_Types.ServiceName',
+                    'Service_Types.Fees',
+                    'Service_Types.RequiredDocuments',
+                    'Departments.DepartmentName'
                 )
                 ->first();
 
-            $payments = DB::table('payments')
-                ->where('payments.RequestID', $reqId)
-                ->orderBy('payments.PaymentDate', 'asc')
+            $payments = DB::table('Payments')
+                ->where('Payments.RequestID', $reqId)
+                ->orderBy('Payments.PaymentDate', 'asc')
                 ->get();
 
-            $attachments = DB::table('attachments')
-                ->where('attachments.RequestID', $reqId)
-                ->orderBy('attachments.created_at', 'asc')
+            $attachments = DB::table('Attachments')
+                ->where('Attachments.RequestID', $reqId)
+                ->orderBy('Attachments.created_at', 'asc')
                 ->get();
         }
 
@@ -169,8 +169,8 @@ class AuditController extends Controller
         return response()->json([
             'request' => $serviceRequest,
             'timeline' => $timeline,
-            'payments' => $payments,
-            'attachments' => $attachments,
+            'Payments' => $payments,
+            'Attachments' => $attachments,
             'details' => $details,
         ]);
     }
@@ -179,20 +179,20 @@ class AuditController extends Controller
     {
         $query = DB::table('audit_logs')
             ->join('users', 'audit_logs.UserID', '=', 'users.id')
-            ->leftJoin('service_requests', 'audit_logs.ReferenceID', '=', 'service_requests.RequestID')
-            ->leftJoin('persons', 'service_requests.PersonID', '=', 'persons.PersonID')
-            ->leftJoin('service_types', 'service_requests.ServiceTypeID', '=', 'service_types.ServiceTypeID')
-            ->leftJoin('payments', 'service_requests.RequestID', '=', 'payments.RequestID')
+            ->leftJoin('Service_Requests', 'audit_logs.ReferenceID', '=', 'Service_Requests.RequestID')
+            ->leftJoin('Persons', 'Service_Requests.PersonID', '=', 'Persons.PersonID')
+            ->leftJoin('Service_Types', 'Service_Requests.ServiceTypeID', '=', 'Service_Types.ServiceTypeID')
+            ->leftJoin('Payments', 'Service_Requests.RequestID', '=', 'Payments.RequestID')
             ->select(
                 'audit_logs.Timestamp',
                 'users.Username',
                 'audit_logs.ActionType',
                 'audit_logs.Description',
-                'persons.FullName',
-                'service_types.ServiceName',
-                'service_requests.Status as RequestStatus',
-                'payments.Status as PaymentStatus',
-                'payments.Amount',
+                'Persons.FullName',
+                'Service_Types.ServiceName',
+                'Service_Requests.Status as RequestStatus',
+                'Payments.Status as PaymentStatus',
+                'Payments.Amount',
                 'audit_logs.IPAddress'
             );
 
@@ -201,7 +201,7 @@ class AuditController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('audit_logs.Description', 'LIKE', "%{$search}%")
                   ->orWhere('users.Username', 'LIKE', "%{$search}%")
-                  ->orWhere('persons.FullName', 'LIKE', "%{$search}%")
+                  ->orWhere('Persons.FullName', 'LIKE', "%{$search}%")
                   ->orWhere('audit_logs.IPAddress', 'LIKE', "%{$search}%");
             });
         }
@@ -213,7 +213,7 @@ class AuditController extends Controller
 
         $status = trim((string) $request->input('status', ''));
         if ($status !== '') {
-            $query->where('service_requests.Status', '=', $status);
+            $query->where('Service_Requests.Status', '=', $status);
         }
 
         $dateFrom = trim((string) $request->input('date_from', ''));
