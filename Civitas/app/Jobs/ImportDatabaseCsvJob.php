@@ -2,14 +2,13 @@
 
 namespace App\Jobs;
 
-use App\Services\CitizensCacheService;
+use App\Services\DatabaseCsvImporter;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Throwable;
 
 class ImportDatabaseCsvJob implements ShouldQueue
 {
@@ -17,101 +16,38 @@ class ImportDatabaseCsvJob implements ShouldQueue
 
     public $timeout = 7200;
 
-    private const DB_CHUNK_SIZE = 500;
-    private const MAX_RECORDS = 4000000;
-
-    private array $cityIds = [];
-    private array $governorateIds = [];
-    private array $nationalityIds = [];
-
-    public function __construct()
-    {
-    }
+    public $tries = 1;
 
     public function handle(): void
     {
         $path = base_path('database.csv');
 
-        if (!file_exists($path)) {
-            return;
+        $this->log("Starting import from {$path}");
+
+        try {
+            $lastLogged = 0;
+
+            $count = (new DatabaseCsvImporter())->import($path, function ($processed, $total) use (&$lastLogged) {
+                if ($processed - $lastLogged >= 50000) {
+                    $this->log("{$processed}/{$total} rows inserted");
+                    $lastLogged = $processed;
+                }
+            });
+
+            $this->log("Import finished. {$count} persons inserted.");
+        } catch (Throwable $e) {
+            $this->log("Import failed: {$e->getMessage()}");
+            throw $e;
         }
-
-        $this->cityIds = DB::table('Cities')->pluck('CityID')->toArray();
-        $this->governorateIds = DB::table('Governorates')->pluck('GovernorateID')->toArray();
-        $this->nationalityIds = DB::table('Nationalities')->pluck('NationalityID')->toArray();
-
-        $handle = fopen($path, 'r');
-        $headers = fgetcsv($handle, 0, ',', '"', '');
-
-        if (!$headers) {
-            fclose($handle);
-            return;
-        }
-
-        $headers = array_map('trim', $headers);
-
-        $batch = [];
-        $rowIndex = 0;
-
-        while (($line = fgetcsv($handle, 0, ',', '"', '')) !== false) {
-            if ($rowIndex >= self::MAX_RECORDS) {
-                break;
-            }
-
-            $record = array_combine($headers, $line);
-            $batch[] = $this->buildRow($record);
-            $rowIndex++;
-
-            if (count($batch) >= self::DB_CHUNK_SIZE) {
-                $this->flushBatch($batch);
-                $batch = [];
-            }
-        }
-
-        if (!empty($batch)) {
-            $this->flushBatch($batch);
-        }
-
-        fclose($handle);
-
-        $this->clearCitizensCache();
     }
 
-    private function buildRow(array $record): array
+    public function failed(Throwable $exception): void
     {
-        $fullName = trim(
-            ($record['FirstName'] ?? '') . ' ' .
-            ($record['FatherName'] ?? '') . ' ' .
-            ($record['FamilyName'] ?? '')
-        );
-
-        return [
-            'PersonID'       => (string) Str::uuid(),
-            'FullName'       => $fullName ?: '',
-            'FullNameSearch' => \App\Models\Person::normalizeName($fullName),
-            'DateOfBirth'    => null,
-            'NationalID'     => $record['ID'] ?? null,
-            'Address'        => null,
-            'Gender'         => null,
-            'NationalityID'  => $this->nationalityIds ? $this->nationalityIds[array_rand($this->nationalityIds)] : null,
-            'CityID'         => $this->cityIds ? $this->cityIds[array_rand($this->cityIds)] : null,
-            'GovernorateID'  => $this->governorateIds ? $this->governorateIds[array_rand($this->governorateIds)] : null,
-            'Phone'          => $record['PhoneNumber'] ?? null,
-            'Email'          => $record['Email'] ?? null,
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ];
+        $this->log("Job failed: {$exception->getMessage()}");
     }
 
-    private function flushBatch(array &$batch): void
+    private function log(string $message): void
     {
-        DB::table('Persons')->insertOrIgnore($batch);
-        $batch = [];
-    }
-
-    private function clearCitizensCache(): void
-    {
-        CitizensCacheService::flushCitizensCache();
-        \App\Http\Controllers\Admin\DashboardController::clearCache();
+        @file_put_contents('/tmp/import_database.log', date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL, FILE_APPEND);
     }
 }
