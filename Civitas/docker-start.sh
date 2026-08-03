@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+echo "DB_HOST=$DB_HOST"
+echo "DB_PORT=$DB_PORT"
+echo "DB_DATABASE=$DB_DATABASE"
+echo "DB_USERNAME=$DB_USERNAME"
+echo "MYSQLHOST=$MYSQLHOST"
+
 php artisan optimize:clear
 
 if [ -z "$APP_KEY" ]; then
