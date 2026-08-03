@@ -202,7 +202,7 @@
                         <td class="py-3.5 px-4">
                             <div class="flex items-center gap-2">
                                 @if($log->avatar)
-                                <img src="{{ asset($log->avatar) }}" alt="{{ $log->Username }}" class="h-6 w-6 rounded-full object-cover">
+                                <img src="{{ str_starts_with($log->avatar, 'http') ? $log->avatar : asset($log->avatar) }}" alt="{{ $log->Username }}" class="h-6 w-6 rounded-full object-cover">
                                 @else
                                 <span class="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-600 dark:bg-purple-900/50 dark:text-purple-400 uppercase">{{ substr($log->Username, 0, 1) }}</span>
                                 @endif
