@@ -10,29 +10,40 @@ class ServiceSeeder extends Seeder
 {
     public function run(): void
     {
-        $departmentIds = DB::table('Departments')->pluck('DepartmentID')->toArray();
-        if (empty($departmentIds)) return;
+        if (DB::table('Service_Types')->exists()) {
+            $this->command->warn('Service_Types already seeded. Skipping.');
+            return;
+        }
+
+        $departmentIds = DB::table('Departments')->pluck('DepartmentID', 'DepartmentName');
+        if ($departmentIds->isEmpty()) {
+            $this->command->error('No departments found. Run DepartmentSeeder first.');
+            return;
+        }
 
         $serviceTypes = [
-            ['name' => 'New Passport', 'fees' => 15000, 'dept_idx' => 0, 'docs' => 'National ID Copy, Personal Photo, Birth Certificate'],
-            ['name' => 'Passport Renewal', 'fees' => 10000, 'dept_idx' => 0, 'docs' => 'Old Passport, National ID Copy, Personal Photo'],
-            ['name' => 'Lost Passport Replacement', 'fees' => 25000, 'dept_idx' => 0, 'docs' => 'Police Report, National ID Copy, Personal Photo, Affidavit'],
-            ['name' => 'Exit Visa', 'fees' => 5000, 'dept_idx' => 0, 'docs' => 'Passport Copy, Sponsor Letter, National ID Copy'],
-            ['name' => 'Service Fee Payment', 'fees' => 2000, 'dept_idx' => 1, 'docs' => 'Payment Receipt, National ID Copy'],
-            ['name' => 'Late Penalty', 'fees' => 5000, 'dept_idx' => 1, 'docs' => 'National ID Copy, Original Document'],
-            ['name' => 'Financial Settlement', 'fees' => 30000, 'dept_idx' => 1, 'docs' => 'Financial Statement, National ID Copy, Bank Letter'],
-            ['name' => 'Legal Consultation', 'fees' => 10000, 'dept_idx' => 2, 'docs' => 'Case Summary, National ID Copy, Power of Attorney'],
-            ['name' => 'Contract Notarization', 'fees' => 15000, 'dept_idx' => 2, 'docs' => 'Original Contract, National ID Copies of All Parties'],
-            ['name' => 'Court Case Filing', 'fees' => 50000, 'dept_idx' => 2, 'docs' => 'Court Documents, National ID Copy, Evidence Files, Power of Attorney'],
+            ['name' => 'جواز سفر جديد', 'fees' => 15000, 'dept' => 'قسم الجوازات', 'docs' => 'صورة عن الهوية، صورة شخصية، شهادة ميلاد'],
+            ['name' => 'تجديد جواز السفر', 'fees' => 10000, 'dept' => 'قسم الجوازات', 'docs' => 'الجواز القديم، صورة عن الهوية، صورة شخصية'],
+            ['name' => 'بدل فاقد لجواز السفر', 'fees' => 25000, 'dept' => 'قسم الجوازات', 'docs' => 'محضر شرطة، صورة عن الهوية، صورة شخصية، إقرار'],
+            ['name' => 'تأشيرة خروج', 'fees' => 5000, 'dept' => 'قسم الجوازات', 'docs' => 'صورة الجواز، كتاب الكفيل، صورة عن الهوية'],
+            ['name' => 'دفع رسوم الخدمة', 'fees' => 2000, 'dept' => 'قسم المالية', 'docs' => 'إيصال الدفع، صورة عن الهوية'],
+            ['name' => 'غرامة التأخير', 'fees' => 5000, 'dept' => 'قسم المالية', 'docs' => 'صورة عن الهوية، المستند الأصلي'],
+            ['name' => 'تسوية مالية', 'fees' => 30000, 'dept' => 'قسم المالية', 'docs' => 'كشف حساب، صورة عن الهوية، كتاب من البنك'],
+            ['name' => 'استشارة قانونية', 'fees' => 10000, 'dept' => 'الشؤون القانونية', 'docs' => 'ملخص القضية، صورة عن الهوية، توكيل'],
+            ['name' => 'توثيق عقد', 'fees' => 15000, 'dept' => 'الشؤون القانونية', 'docs' => 'العقد الأصلي، صور هويات جميع الأطراف'],
+            ['name' => 'رفع دعوى قضائية', 'fees' => 50000, 'dept' => 'الشؤون القانونية', 'docs' => 'مستندات المحكمة، صورة عن الهوية، ملف الأدلة، توكيل'],
         ];
 
-        DB::table('Service_Types')->delete();
-
         foreach ($serviceTypes as $st) {
+            $deptId = $departmentIds[$st['dept']] ?? null;
+            if (!$deptId) {
+                continue;
+            }
+
             DB::table('Service_Types')->insert([
-                'ServiceTypeID' => Str::uuid(),
+                'ServiceTypeID' => (string) Str::uuid(),
                 'ServiceName' => $st['name'],
-                'DepartmentID' => $departmentIds[$st['dept_idx']],
+                'DepartmentID' => $deptId,
                 'Fees' => $st['fees'],
                 'RequiredDocuments' => $st['docs'],
                 'created_at' => now(),

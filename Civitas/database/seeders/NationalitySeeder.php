@@ -10,24 +10,41 @@ class NationalitySeeder extends Seeder
 {
     public function run(): void
     {
-        $csvPath = database_path('../nationalities.csv');
-
-        if (! file_exists($csvPath)) {
-            $this->command->error('nationalities.csv not found!');
+        if (DB::table('Nationalities')->exists()) {
+            $this->command->warn('Nationalities already seeded. Skipping.');
             return;
         }
 
-        $rows = array_map('str_getcsv', file($csvPath));
-        $header = array_shift($rows);
+        $csvPath = database_path('data/nationalities.csv');
 
-        foreach ($rows as $row) {
-            if (count($row) < 2) continue;
-
-            DB::table('Nationalities')->insert([
-                'NationalityID' => Str::uuid(),
-                'NationalityName' => trim($row[1]),
-            ]);
+        if (!file_exists($csvPath)) {
+            $this->command->error("nationalities.csv not found at: {$csvPath}");
+            return;
         }
+
+        $handle = fopen($csvPath, 'r');
+        $headers = fgetcsv($handle, 0, ',', '"', '');
+
+        if ($headers) {
+            $headers = array_map(fn ($header) => trim(preg_replace('/^\xEF\xBB\xBF/', '', $header)), $headers);
+
+            while (($line = fgetcsv($handle, 0, ',', '"', '')) !== false) {
+                if (count($line) !== count($headers)) {
+                    continue;
+                }
+
+                $record = array_combine($headers, $line);
+
+                DB::table('Nationalities')->insert([
+                    'NationalityID' => (string) Str::uuid(),
+                    'NationalityName' => trim((string) ($record['NationalityName'] ?? '')),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        fclose($handle);
 
         $this->command->info('Nationalities seeded successfully!');
     }
