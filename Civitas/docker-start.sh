@@ -12,6 +12,11 @@ if [ -n "$MYSQL_URL" ] && [ -z "$DB_URL" ]; then
 fi
 
 export DB_CONNECTION="${DB_CONNECTION:-mysql}"
+export DB_HOST="${DB_HOST:-$MYSQLHOST}"
+export DB_PORT="${DB_PORT:-$MYSQLPORT}"
+export DB_DATABASE="${DB_DATABASE:-$MYSQLDATABASE}"
+export DB_USERNAME="${DB_USERNAME:-$MYSQLUSER}"
+export DB_PASSWORD="${DB_PASSWORD:-$MYSQLPASSWORD}"
 
 php artisan migrate --force --graceful --no-interaction || true
 
