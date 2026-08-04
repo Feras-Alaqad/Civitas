@@ -18,21 +18,37 @@ class ImportDatabaseCsvJob implements ShouldQueue
 
     public $tries = 1;
 
+    public function __construct(public ?int $limit = null, public bool $truncate = false)
+    {
+    }
+
     public function handle(): void
     {
         $path = base_path('database.csv');
 
+        if (!file_exists($path)) {
+            $this->log("CSV file not found: {$path}");
+            return;
+        }
+
         $this->log("Starting import from {$path}");
 
         try {
+            $importer = new DatabaseCsvImporter();
+
+            if ($this->truncate) {
+                $importer->truncatePersons();
+                $this->log('Truncated all existing persons.');
+            }
+
             $lastLogged = 0;
 
-            $count = (new DatabaseCsvImporter())->import($path, function ($processed, $total) use (&$lastLogged) {
+            $count = $importer->import($path, function ($processed, $total) use (&$lastLogged) {
                 if ($processed - $lastLogged >= 50000) {
                     $this->log("{$processed}/{$total} rows inserted");
                     $lastLogged = $processed;
                 }
-            });
+            }, $this->limit);
 
             $this->log("Import finished. {$count} persons inserted.");
         } catch (Throwable $e) {

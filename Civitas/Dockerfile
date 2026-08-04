@@ -33,6 +33,8 @@ RUN chmod +x /usr/local/bin/docker-start.sh \
     --no-dev \
     --no-interaction
 
+RUN printf 'upload_max_filesize=600M\npost_max_size=650M\nmax_execution_time=0\nmemory_limit=512M\nmax_file_uploads=20\n' > /usr/local/etc/php/conf.d/zz-uploads.ini
+
 EXPOSE 80
 
 CMD ["/usr/local/bin/docker-start.sh"]

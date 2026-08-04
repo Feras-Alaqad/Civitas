@@ -19,3 +19,7 @@ Schedule::command('cache:warm-dashboard')
 Schedule::command('citizens:refresh-cache')
     ->everyFiveSeconds()
     ->withoutOverlapping();
+
+Schedule::command('imports:resume-stalled')
+    ->everyMinute()
+    ->withoutOverlapping();

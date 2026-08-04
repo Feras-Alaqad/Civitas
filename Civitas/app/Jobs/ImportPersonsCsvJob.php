@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Http\Controllers\Admin\DashboardController;
 use App\Models\Person;
 use App\Services\CitizensCacheService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,6 +12,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -18,29 +20,47 @@ class ImportPersonsCsvJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 7200;
+    public $timeout = 3600;
 
-    public $tries = 1;
+    public $tries = 3;
 
-    private const CHUNK_SIZE = 500;
+    private const INSERT_BATCH = 500;
 
-    public function __construct(public string $importId)
-    {
+    private const ROWS_PER_JOB = 10000;
+
+    private const PROGRESS_TTL = 172800;
+
+    private array $cityIds = [];
+
+    private array $governorateIds = [];
+
+    private array $nationalityIds = [];
+
+    public function __construct(
+        public string $importId,
+        public int $offset = 0,
+        public int $processed = 0,
+    ) {
     }
 
     public function handle(): void
     {
-        $storagePath = storage_path("app/imports/{$this->importId}.csv");
+        $storagePath = Storage::disk('local')->path("imports/{$this->importId}.csv");
 
         if (!file_exists($storagePath)) {
-            $this->setStatus('error', 0, 0);
+            $this->failImport("CSV file not found: {$storagePath}");
             return;
         }
+
+        $state = $this->currentState();
+        $startOffset = (int) ($state['offset'] ?? $this->offset);
+        $baseProcessed = (int) ($state['processed'] ?? $this->processed);
+        $total = (int) ($state['total'] ?? 0);
 
         $handle = fopen($storagePath, 'r');
 
         if (!$handle) {
-            $this->setStatus('error', 0, 0);
+            $this->failImport('Could not open CSV file for reading.');
             return;
         }
 
@@ -48,68 +68,83 @@ class ImportPersonsCsvJob implements ShouldQueue
 
         if (!$headers) {
             fclose($handle);
-            $this->setStatus('error', 0, 0);
+            $this->failImport('Could not read CSV headers.');
             return;
         }
 
-        $headers = array_map('trim', $headers);
+        $headers = array_map(
+            fn ($header) => trim(preg_replace('/^\xEF\xBB\xBF/', '', $header)),
+            $headers
+        );
 
-        $total = $this->countDataLines($handle);
-        rewind($handle);
-        fgetcsv($handle);
+        $fileSize = filesize($storagePath) ?: 0;
 
-        Cache::put("import.{$this->importId}", [
-            'percent' => 0,
-            'processed' => 0,
-            'total' => $total,
-            'status' => 'processing',
-        ], 3600);
+        if ($total === 0) {
+            $total = $this->countDataLines($storagePath);
+        }
+
+        if ($startOffset > 0) {
+            fseek($handle, $startOffset);
+        }
+
+        $this->loadLookupIds();
 
         $batch = [];
-        $batchPersonIds = [];
-        $processed = 0;
+        $processedInChunk = 0;
+        $read = 0;
 
-        while (($line = fgetcsv($handle, 0, ',', '"', '')) !== false) {
-            if (count($headers) !== count($line)) {
+        while ($read < self::ROWS_PER_JOB && ($line = fgets($handle)) !== false) {
+            $line = rtrim($line, "\r\n");
+            $read++;
+
+            if ($line === '') {
                 continue;
             }
 
-            $record = array_combine($headers, $line);
-            $row = $this->buildRow($record);
+            $parsed = str_getcsv($line, ',', '"', '');
 
-            $batch[] = $row;
-            $batchPersonIds[] = $row['PersonID'];
+            if (count($parsed) !== count($headers)) {
+                continue;
+            }
 
-            if (count($batch) >= self::CHUNK_SIZE) {
-                $this->flushBatch($batch, $batchPersonIds);
+            $batch[] = $this->buildRow(array_combine($headers, $parsed));
+            $processedInChunk++;
+
+            if (count($batch) >= self::INSERT_BATCH) {
+                DB::table('Persons')->insertOrIgnore($batch);
                 $batch = [];
-                $batchPersonIds = [];
-                $processed += self::CHUNK_SIZE;
-                $this->updateProgress($processed, $total);
             }
         }
 
         if (!empty($batch)) {
-            $this->flushBatch($batch, $batchPersonIds);
-            $processed += count($batch);
+            DB::table('Persons')->insertOrIgnore($batch);
         }
 
+        $newOffset = ftell($handle);
         fclose($handle);
 
-        $this->finishImport($processed, $total);
-    }
+        $newProcessed = $baseProcessed + $processedInChunk;
 
-    private function countDataLines($handle): int
-    {
-        $count = 0;
-
-        while (($line = fgets($handle)) !== false) {
-            if (trim($line) !== '') {
-                $count++;
-            }
+        if ($read < self::ROWS_PER_JOB || $newOffset >= $fileSize) {
+            $this->finalize($total, $newProcessed);
+            return;
         }
 
-        return $count;
+        $this->saveProgress([
+            'status'    => 'processing',
+            'processed' => $newProcessed,
+            'total'     => $total,
+            'remaining' => max(0, $total - $newProcessed),
+            'percent'   => $total > 0 ? (int) round(($newProcessed / $total) * 100) : 0,
+            'offset'    => $newOffset,
+        ]);
+
+        ImportPersonsCsvJob::dispatch($this->importId, $newOffset, $newProcessed);
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $this->failImport('Import failed: ' . $exception->getMessage());
     }
 
     private function buildRow(array $record): array
@@ -126,70 +161,110 @@ class ImportPersonsCsvJob implements ShouldQueue
         }
 
         return [
-            'PersonID'       => trim((string) ($record['PersonID'] ?? '')) ?: (string) Str::uuid(),
+            'PersonID'       => (string) Str::uuid(),
             'FullName'       => $fullName,
             'FullNameSearch' => Person::normalizeName($fullName),
-            'CityID'         => $record['CityID'] ?? null,
-            'GovernorateID'  => $record['GovernorateID'] ?? null,
-            'NationalityID'  => $record['NationalityID'] ?? null,
-            'Phone'          => $record['Phone'] ?? null,
+            'CityID'         => $this->randomId($this->cityIds),
+            'GovernorateID'  => $this->randomId($this->governorateIds),
+            'NationalityID'  => $this->randomId($this->nationalityIds),
+            'Phone'          => $record['PhoneNumber'] ?? null,
             'Email'          => $record['Email'] ?? null,
-            'DateOfBirth'    => $record['DateOfBirth'] ?? null,
-            'NationalID'     => $record['NationalID'] ?? null,
-            'Address'        => $record['Address'] ?? null,
-            'Gender'         => $record['Gender'] ?? null,
+            'DateOfBirth'    => null,
+            'NationalID'     => ($record['ID'] ?? '') !== '' ? $record['ID'] : null,
+            'Address'        => null,
+            'Gender'         => null,
             'created_at'     => now(),
             'updated_at'     => now(),
         ];
     }
 
-    private function flushBatch(array $batch, array $personIds): void
+    private function loadLookupIds(): void
     {
-        DB::table('Persons')->insertOrIgnore($batch);
+        $this->cityIds = DB::table('Cities')->pluck('CityID')->toArray();
+        $this->governorateIds = DB::table('Governorates')->pluck('GovernorateID')->toArray();
+        $this->nationalityIds = DB::table('Nationalities')->pluck('NationalityID')->toArray();
+    }
 
-        if ($personIds && config('scout.driver') === 'meilisearch') {
-            Person::whereIn('PersonID', $personIds)->searchable();
+    private function randomId(array $ids): ?string
+    {
+        return $ids ? (string) $ids[array_rand($ids)] : null;
+    }
+
+    private function countDataLines(string $path): int
+    {
+        $count = 0;
+        $handle = fopen($path, 'r');
+
+        if (!$handle) {
+            return 0;
         }
+
+        while (fgets($handle) !== false) {
+            $count++;
+        }
+
+        fclose($handle);
+
+        return max(0, $count - 1);
     }
 
-    private function updateProgress(int $processed, int $total): void
+    private function currentState(): array
     {
-        $percent = $total > 0 ? (int) round(($processed / $total) * 100) : 100;
-
-        Cache::put("import.{$this->importId}", [
-            'percent' => $percent,
-            'processed' => $processed,
-            'total' => $total,
-            'status' => 'processing',
-        ], 3600);
+        return Cache::get("import.{$this->importId}", []);
     }
 
-    private function finishImport(int $processed, int $total): void
+    private function saveProgress(array $state): void
     {
-        Cache::put("import.{$this->importId}", [
-            'percent' => 100,
+        $state['updated_at'] = now()->timestamp;
+
+        Cache::put("import.{$this->importId}", $state, self::PROGRESS_TTL);
+    }
+
+    private function finalize(int $total, int $processed): void
+    {
+        $this->saveProgress([
+            'status'    => 'completed',
+            'percent'   => 100,
             'processed' => $processed,
-            'total' => $total,
-            'status' => 'completed',
-        ], 3600);
+            'total'     => $total,
+            'remaining' => 0,
+            'offset'    => 0,
+        ]);
 
         CitizensCacheService::flushCitizensCache();
         Cache::forever('citizens:total_count', DB::table('Persons')->count());
-        \App\Http\Controllers\Admin\DashboardController::clearCache();
+        DashboardController::clearCache();
+
+        Storage::disk('local')->delete("imports/{$this->importId}.csv");
+
+        $this->removeFromActiveList();
     }
 
-    private function setStatus(string $status, int $processed, int $total): void
+    private function failImport(string $message): void
     {
-        Cache::put("import.{$this->importId}", [
-            'percent' => $status === 'completed' ? 100 : 0,
-            'processed' => $processed,
-            'total' => $total,
-            'status' => $status,
-        ], 3600);
+        $this->saveProgress([
+            'status'    => 'error',
+            'percent'   => 0,
+            'processed' => 0,
+            'total'     => 0,
+            'remaining' => 0,
+            'offset'    => 0,
+            'message'   => $message,
+        ]);
+
+        $this->removeFromActiveList();
     }
 
-    public function failed(Throwable $exception): void
+    private function removeFromActiveList(): void
     {
-        $this->setStatus('error', 0, 0);
+        $ids = Cache::get('imports:active_ids', []);
+        $ids = array_values(array_diff($ids, [$this->importId]));
+
+        if (empty($ids)) {
+            Cache::forget('imports:active_ids');
+            return;
+        }
+
+        Cache::forever('imports:active_ids', $ids);
     }
 }

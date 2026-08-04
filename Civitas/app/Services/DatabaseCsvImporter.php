@@ -18,11 +18,13 @@ class DatabaseCsvImporter
     private array $governorateIds = [];
     private array $nationalityIds = [];
 
-    public function import(string $path, ?callable $onProgress = null): int
+    public function import(string $path, ?callable $onProgress = null, ?int $limit = null): int
     {
         if (!file_exists($path)) {
             throw new RuntimeException("CSV file not found: {$path}");
         }
+
+        $limit = min($limit ?? self::MAX_RECORDS, self::MAX_RECORDS);
 
         $this->loadRandomIds();
 
@@ -34,12 +36,12 @@ class DatabaseCsvImporter
             throw new RuntimeException("Could not read CSV headers from: {$path}");
         }
 
-        $total = $this->countDataLines($path);
+        $total = min($this->countDataLines($path), $limit);
         $batch = [];
         $processed = 0;
 
         while (($line = fgetcsv($handle, 0, ',', '"', '')) !== false) {
-            if ($processed >= self::MAX_RECORDS) {
+            if ($processed >= $limit) {
                 break;
             }
 
@@ -93,6 +95,16 @@ class DatabaseCsvImporter
         fclose($handle);
 
         return max(0, $count - 1);
+    }
+
+    public function truncatePersons(): void
+    {
+        DB::table('Service_Requests')->update(['PersonID' => null]);
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        DB::table('Persons')->truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        $this->clearCaches();
     }
 
     private function loadRandomIds(): void

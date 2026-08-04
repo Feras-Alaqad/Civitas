@@ -655,10 +655,17 @@ function startPollingModal(importId) {
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 document.getElementById('progressPercentModal').textContent = data.percent + '%';
-                document.getElementById('progressCountModal').textContent = data.processed + ' / ' + data.total + ' rows';
                 document.getElementById('progressBarModal').style.width = data.percent + '%';
-                document.getElementById('progressStatusModal').textContent =
-                    data.status === 'processing' ? 'Processing row ' + data.processed + ' of ' + data.total : '';
+
+                if (data.status === 'processing' && !data.total) {
+                    document.getElementById('progressCountModal').textContent = 'Counting rows...';
+                    document.getElementById('progressStatusModal').textContent = '';
+                } else if (data.status === 'processing') {
+                    document.getElementById('progressCountModal').textContent = data.processed + ' inserted \u00B7 ' + data.remaining + ' remaining';
+                    document.getElementById('progressStatusModal').textContent = 'Processing row ' + data.processed + ' of ' + data.total;
+                } else {
+                    document.getElementById('progressCountModal').textContent = data.processed + ' inserted \u00B7 ' + data.remaining + ' remaining';
+                }
 
                 if (data.status === 'completed') {
                     clearInterval(importPollInterval);

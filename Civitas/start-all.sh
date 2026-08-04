@@ -36,7 +36,7 @@ if command -v meilisearch >/dev/null 2>&1; then
 fi
 
 echo "Starting Laravel Queue Worker..."
-nohup php artisan queue:work --sleep=1 --tries=3 > /tmp/queue.log 2>&1 &
+nohup php artisan queue:work --sleep=1 --tries=3 --memory=512 > /tmp/queue.log 2>&1 &
 
 echo "Starting Laravel Scheduler..."
 nohup php artisan schedule:work > /tmp/schedule.log 2>&1 &
