@@ -27,6 +27,16 @@ class DatabaseCsvImporter
         ['name' => 'idx_persons_gov_person', 'columns' => ['GovernorateID', 'PersonID'], 'type' => 'index'],
     ];
 
+    private const PERSONS_FOREIGN_KEYS = [
+        [
+            'name' => 'persons_cityid_foreign',
+            'column' => 'CityID',
+            'references' => 'CityID',
+            'on' => 'Cities',
+            'onDelete' => 'SET NULL',
+        ],
+    ];
+
     private array $cityIds = [];
     private array $governorateIds = [];
     private array $nationalityIds = [];
@@ -40,9 +50,11 @@ class DatabaseCsvImporter
         $limit = min($limit ?? self::MAX_RECORDS, self::MAX_RECORDS);
 
         $this->loadRandomIds();
-        $this->dropSecondaryIndexes();
 
         try {
+            $this->dropForeignKeys();
+            $this->dropSecondaryIndexes();
+
             $handle = fopen($path, 'r');
             $headers = $this->readHeaders($handle);
 
@@ -92,7 +104,51 @@ class DatabaseCsvImporter
             return $processed;
         } finally {
             $this->recreateIndexes();
+            $this->recreateForeignKeys();
         }
+    }
+
+    private function dropForeignKeys(): void
+    {
+        foreach (self::PERSONS_FOREIGN_KEYS as $fk) {
+            if (!$this->hasForeignKey($fk['name'])) {
+                continue;
+            }
+
+            Schema::table('Persons', function (Blueprint $table) use ($fk) {
+                $table->dropForeign($fk['name']);
+            });
+        }
+    }
+
+    private function recreateForeignKeys(): void
+    {
+        foreach (self::PERSONS_FOREIGN_KEYS as $fk) {
+            if ($this->hasForeignKey($fk['name'])) {
+                continue;
+            }
+
+            Schema::table('Persons', function (Blueprint $table) use ($fk) {
+                $foreign = $table->foreign($fk['column'])->references($fk['references'])->on($fk['on']);
+
+                if ($fk['onDelete'] === 'CASCADE') {
+                    $foreign->cascadeOnDelete();
+                } elseif ($fk['onDelete'] === 'SET NULL') {
+                    $foreign->nullOnDelete();
+                } elseif ($fk['onDelete'] === 'RESTRICT') {
+                    $foreign->restrictOnDelete();
+                }
+            });
+        }
+    }
+
+    private function hasForeignKey(string $name): bool
+    {
+        return (bool) DB::selectOne(
+            "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Persons' AND CONSTRAINT_NAME = ? LIMIT 1",
+            [$name]
+        );
     }
 
     private function dropSecondaryIndexes(): void
