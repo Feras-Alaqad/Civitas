@@ -21,6 +21,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 
 COPY . .
+RUN cat database.csv.* > database.csv && rm -f database.csv.*
 COPY --from=frontend /app/public/build /app/public/build
 
 RUN ls -la public/build
