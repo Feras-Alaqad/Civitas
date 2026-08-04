@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Models\Person;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -13,6 +15,17 @@ class DatabaseCsvImporter
 {
     private const CHUNK_SIZE = 500;
     private const MAX_RECORDS = 4000000;
+
+    private const IMPORT_INDEXES = [
+        ['name' => 'idx_persons_national_id', 'columns' => ['NationalID'], 'type' => 'index'],
+        ['name' => 'idx_persons_city_id', 'columns' => ['CityID'], 'type' => 'index'],
+        ['name' => 'idx_persons_search', 'columns' => ['FullName', 'Phone', 'Email'], 'type' => 'index'],
+        ['name' => 'idx_persons_email', 'columns' => ['Email'], 'type' => 'index'],
+        ['name' => 'idx_persons_phone', 'columns' => ['Phone'], 'type' => 'index'],
+        ['name' => 'ft_persons_full_name', 'columns' => ['FullNameSearch'], 'type' => 'fulltext'],
+        ['name' => 'idx_persons_governorate_id', 'columns' => ['GovernorateID'], 'type' => 'index'],
+        ['name' => 'idx_persons_gov_person', 'columns' => ['GovernorateID', 'PersonID'], 'type' => 'index'],
+    ];
 
     private array $cityIds = [];
     private array $governorateIds = [];
@@ -27,54 +40,89 @@ class DatabaseCsvImporter
         $limit = min($limit ?? self::MAX_RECORDS, self::MAX_RECORDS);
 
         $this->loadRandomIds();
+        $this->dropSecondaryIndexes();
 
-        $handle = fopen($path, 'r');
-        $headers = $this->readHeaders($handle);
+        try {
+            $handle = fopen($path, 'r');
+            $headers = $this->readHeaders($handle);
 
-        if (!$headers) {
-            fclose($handle);
-            throw new RuntimeException("Could not read CSV headers from: {$path}");
-        }
-
-        $total = min($this->countDataLines($path), $limit);
-        $batch = [];
-        $processed = 0;
-
-        while (($line = fgetcsv($handle, 0, ',', '"', '')) !== false) {
-            if ($processed >= $limit) {
-                break;
+            if (!$headers) {
+                fclose($handle);
+                throw new RuntimeException("Could not read CSV headers from: {$path}");
             }
 
-            if (count($line) !== count($headers)) {
+            $total = min($this->countDataLines($path), $limit);
+            $batch = [];
+            $processed = 0;
+
+            while (($line = fgetcsv($handle, 0, ',', '"', '')) !== false) {
+                if ($processed >= $limit) {
+                    break;
+                }
+
+                if (count($line) !== count($headers)) {
+                    continue;
+                }
+
+                $batch[] = $this->buildRow(array_combine($headers, $line));
+                $processed++;
+
+                if (count($batch) >= self::CHUNK_SIZE) {
+                    DB::table('Persons')->insertOrIgnore($batch);
+                    $batch = [];
+
+                    if ($onProgress) {
+                        $onProgress($processed, $total);
+                    }
+                }
+            }
+
+            if (!empty($batch)) {
+                DB::table('Persons')->insertOrIgnore($batch);
+            }
+
+            fclose($handle);
+
+            if ($onProgress) {
+                $onProgress($processed, $total);
+            }
+
+            $this->clearCaches();
+
+            return $processed;
+        } finally {
+            $this->recreateIndexes();
+        }
+    }
+
+    private function dropSecondaryIndexes(): void
+    {
+        foreach (self::IMPORT_INDEXES as $index) {
+            if (!Schema::hasIndex('Persons', $index['name'])) {
                 continue;
             }
 
-            $batch[] = $this->buildRow(array_combine($headers, $line));
-            $processed++;
+            Schema::table('Persons', function (Blueprint $table) use ($index) {
+                $table->dropIndex($index['name']);
+            });
+        }
+    }
 
-            if (count($batch) >= self::CHUNK_SIZE) {
-                DB::table('Persons')->insertOrIgnore($batch);
-                $batch = [];
-
-                if ($onProgress) {
-                    $onProgress($processed, $total);
-                }
+    private function recreateIndexes(): void
+    {
+        foreach (self::IMPORT_INDEXES as $index) {
+            if (Schema::hasIndex('Persons', $index['name'])) {
+                continue;
             }
+
+            Schema::table('Persons', function (Blueprint $table) use ($index) {
+                if ($index['type'] === 'fulltext') {
+                    $table->fullText($index['columns'], $index['name']);
+                } else {
+                    $table->index($index['columns'], $index['name']);
+                }
+            });
         }
-
-        if (!empty($batch)) {
-            DB::table('Persons')->insertOrIgnore($batch);
-        }
-
-        fclose($handle);
-
-        if ($onProgress) {
-            $onProgress($processed, $total);
-        }
-
-        $this->clearCaches();
-
-        return $processed;
     }
 
     public function countDataLines(string $path): int

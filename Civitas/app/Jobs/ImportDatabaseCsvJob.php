@@ -14,9 +14,9 @@ class ImportDatabaseCsvJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 7200;
+    public $timeout = 21600;
 
-    public $tries = 1;
+    public $tries = 3;
 
     public function __construct(public ?int $limit = null, public bool $truncate = false)
     {
