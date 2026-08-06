@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Person;
 use GuzzleHttp\Client as GuzzleHttpClient;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Meilisearch\Client;
 use Meilisearch\Exceptions\ApiException;
 
@@ -22,6 +23,8 @@ class ImportMeilisearch extends Command
 
     private const STATE_FILE = 'meilisearch-import.state';
 
+    private const STATE_KEY = 'meilisearch:import:state';
+
     public function handle(): int
     {
         $client = new Client(
@@ -38,18 +41,19 @@ class ImportMeilisearch extends Command
 
         if ($this->option('reset')) {
             @unlink($statePath);
+            Cache::forget(self::STATE_KEY);
             $this->info('Saved progress cleared.');
         }
 
         $lastPersonId = null;
-        if ($this->option('resume') && file_exists($statePath)) {
-            $state = json_decode((string) file_get_contents($statePath), true);
+        if ($this->option('resume')) {
+            $state = $this->loadProgress($statePath);
             $lastPersonId = $state['lastPersonId'] ?? null;
             if ($lastPersonId) {
                 $this->info("Resuming from PersonID: {$lastPersonId}");
+            } else {
+                $this->warn('No saved progress found. Starting from the beginning.');
             }
-        } elseif ($this->option('resume')) {
-            $this->warn('No saved progress found. Starting from the beginning.');
         }
 
         $chunkSize = max(1, (int) $this->option('chunk'));
@@ -199,13 +203,35 @@ class ImportMeilisearch extends Command
 
     private function saveProgress(string $statePath, string $lastPersonId): void
     {
-        file_put_contents(
-            $statePath,
-            json_encode([
-                'lastPersonId' => $lastPersonId,
-                'updated_at' => now()->toIso8601String(),
-            ], JSON_THROW_ON_ERROR)
-        );
+        $state = [
+            'lastPersonId' => $lastPersonId,
+            'updated_at' => now()->toIso8601String(),
+        ];
+
+        try {
+            Cache::forever(self::STATE_KEY, $state);
+        } catch (\Throwable) {
+            // Cache unavailable (e.g. Redis down); the file fallback still applies.
+        }
+
+        file_put_contents($statePath, json_encode($state, JSON_THROW_ON_ERROR));
+    }
+
+    private function loadProgress(string $statePath): ?array
+    {
+        $state = Cache::get(self::STATE_KEY);
+
+        if (is_array($state)) {
+            return $state;
+        }
+
+        if (file_exists($statePath)) {
+            $decoded = json_decode((string) file_get_contents($statePath), true);
+
+            return is_array($decoded) ? $decoded : null;
+        }
+
+        return null;
     }
 
     /**

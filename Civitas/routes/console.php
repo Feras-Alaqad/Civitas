@@ -23,3 +23,8 @@ Schedule::command('citizens:refresh-cache')
 Schedule::command('imports:resume-stalled')
     ->everyMinute()
     ->withoutOverlapping();
+
+Schedule::command('meilisearch:import --resume --chunk=5000 --timeout=300')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
