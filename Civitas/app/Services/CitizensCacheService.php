@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Person;
+use Illuminate\Cache\DatabaseStore;
+use Illuminate\Cache\RedisStore;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -9,13 +12,16 @@ use Illuminate\Support\Facades\DB;
 class CitizensCacheService
 {
     public const PER_PAGE = 15;
+
     public const TTL_LIST = 300;
+
     public const TTL_PERSON = 600;
+
     public const NULL_SENTINEL = '__';
 
     public function buildListCacheKey(string $search, int $offset): string
     {
-        return 'citizens:list:' . md5($search) . ":{$offset}";
+        return 'citizens:list:'.md5($search).":{$offset}";
     }
 
     public function buildPersonCacheKey(string $personId): string
@@ -49,7 +55,7 @@ class CitizensCacheService
 
     public function buildMeilisearchCacheKey(string $search, int $page): string
     {
-        return 'citizens:meilisearch:' . md5($search) . ":{$page}";
+        return 'citizens:meilisearch:'.md5($search).":{$page}";
     }
 
     public function getCachedMeilisearchRows(string $search, int $page): ?array
@@ -70,13 +76,14 @@ class CitizensCacheService
 
     public function getCachedMeilisearchTotal(string $search): int
     {
-        $cacheKey = 'citizens:meilisearch_total:' . md5($search);
+        $cacheKey = 'citizens:meilisearch_total:'.md5($search);
+
         return (int) Cache::get($cacheKey, 0);
     }
 
     public function putCachedMeilisearchTotal(string $search, int $total): void
     {
-        $cacheKey = 'citizens:meilisearch_total:' . md5($search);
+        $cacheKey = 'citizens:meilisearch_total:'.md5($search);
         Cache::forever($cacheKey, $total);
     }
 
@@ -156,8 +163,12 @@ class CitizensCacheService
 
         if (preg_match('/^\d+$/', $search)) {
             $len = strlen($search);
-            if ($len === 9) return 'national_id';
-            if ($len === 10) return 'phone';
+            if ($len === 9) {
+                return 'national_id';
+            }
+            if ($len === 10) {
+                return 'phone';
+            }
         }
 
         return 'name';
@@ -165,26 +176,52 @@ class CitizensCacheService
 
     private function buildFulltextKeywords(string $search): string
     {
-        $normalized = \App\Models\Person::normalizeName($search);
+        $normalized = Person::normalizeName($search);
 
         $words = collect(preg_split('/\s+/', $normalized))
             ->filter()
             ->values();
 
         return $words
-            ->map(fn($word) => '+' . $word . '*')
+            ->map(fn ($word) => '+'.$word.'*')
             ->implode(' ');
     }
 
     public static function flushCitizensCache(): void
     {
-        $prefix = config('cache.prefix', '');
-        DB::table('cache')->where('key', 'LIKE', $prefix . 'citizens:%')->delete();
+        $store = Cache::getStore();
+
+        if ($store instanceof RedisStore) {
+            $client = $store->connection()->client();
+            $prefix = $store->getPrefix();
+            $cursor = null;
+            $keys = [];
+
+            do {
+                $batch = $client->scan($cursor, $prefix.'citizens:*', 200);
+                $keys = array_merge($keys, is_array($batch) ? $batch : []);
+            } while ((int) $cursor > 0);
+
+            foreach (array_chunk($keys, 500) as $chunk) {
+                $client->del($chunk);
+            }
+
+            return;
+        }
+
+        if ($store instanceof DatabaseStore) {
+            $prefix = config('cache.prefix', '');
+            DB::table('cache')->where('key', 'LIKE', $prefix.'citizens:%')->delete();
+
+            return;
+        }
+
+        Cache::flush();
     }
 
     public function warmMeilisearchPage(string $search, int $page): void
     {
-        $results = \App\Models\Person::search($search)->paginate(
+        $results = Person::search($search)->paginate(
             self::PER_PAGE,
             'page',
             $page
@@ -194,7 +231,7 @@ class CitizensCacheService
         $total = (int) $results->total();
 
         $lastPersonId = null;
-        if (!empty($hits)) {
+        if (! empty($hits)) {
             $lastItem = end($hits);
             $lastPersonId = is_array($lastItem) ? ($lastItem['PersonID'] ?? null) : ($lastItem->PersonID ?? null);
         }
@@ -355,6 +392,7 @@ class CitizensCacheService
 
         if (filter_var($search, FILTER_VALIDATE_EMAIL)) {
             $query->where('Persons.Email', $search);
+
             return;
         }
 
@@ -365,22 +403,23 @@ class CitizensCacheService
             } elseif ($len === 10) {
                 $query->where('Persons.Phone', $search);
             } else {
-                $query->where(fn($q) => $q
+                $query->where(fn ($q) => $q
                     ->where('Persons.Phone', $search)
                     ->orWhere('Persons.NationalID', $search)
                 );
             }
+
             return;
         }
 
-        $normalized = \App\Models\Person::normalizeName($search);
+        $normalized = Person::normalizeName($search);
 
         $words = collect(preg_split('/\s+/', $normalized))
             ->filter()
             ->values();
 
         $keywords = $words
-            ->map(fn($word) => '+' . $word . '*')
+            ->map(fn ($word) => '+'.$word.'*')
             ->implode(' ');
 
         $query->whereRaw(
