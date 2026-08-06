@@ -63,14 +63,30 @@ class Person extends Model
     {
         return [
             'PersonID'    => $this->PersonID,
-            'FullName'    => $this->FullName,
-            'NationalID'  => $this->NationalID,
-            'Gender'      => $this->Gender,
-            'DateOfBirth' => $this->DateOfBirth,
-            'Phone'       => $this->Phone,
-            'Email'       => $this->Email,
-            'Address'     => $this->Address,
+            'FullName'    => self::sanitizeForSearch($this->FullName),
+            'NationalID'  => self::sanitizeForSearch($this->NationalID),
+            'Gender'      => self::sanitizeForSearch($this->Gender),
+            'DateOfBirth' => self::sanitizeForSearch($this->DateOfBirth),
+            'Phone'       => self::sanitizeForSearch($this->Phone),
+            'Email'       => self::sanitizeForSearch($this->Email),
+            'Address'     => self::sanitizeForSearch($this->Address),
         ];
+    }
+
+    /**
+     * Sanitize a value before sending it to Meilisearch so a single malformed
+     * record can never break a whole import batch.
+     */
+    public static function sanitizeForSearch(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        $value = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+        $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $value);
+
+        return mb_substr($value, 0, 2000);
     }
 
     public function searchableAs(): string
