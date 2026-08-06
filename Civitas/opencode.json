@@ -3,8 +3,12 @@
   "mcp": {
     "cloudflare": {
       "type": "local",
-      "command": ["npx", "@cloudflare/mcp-server-cloudflare"],
-      "enabled": true
+      "command": [
+        "npx",
+        "@cloudflare/mcp-server-cloudflare",
+        "run"
+      ],
+      "enabled": false
     }
   }
 }
