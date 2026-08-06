@@ -3,52 +3,85 @@
 namespace App\Console\Commands;
 
 use App\Models\Person;
+use GuzzleHttp\Client as GuzzleHttpClient;
 use Illuminate\Console\Command;
 use Meilisearch\Client;
 use Meilisearch\Exceptions\ApiException;
 
 class ImportMeilisearch extends Command
 {
-    protected $signature = 'meilisearch:import {--chunk=10000 : Batch size} {--wait=0 : Wait ms between batches} {--offset=0 : Start from this PersonID offset}';
-    protected $description = 'Import all Person records into Meilisearch index in batches, isolating any record Meilisearch rejects';
+    protected $signature = 'meilisearch:import '
+        . '{--chunk=10000 : Batch size} '
+        . '{--wait=0 : Wait ms between batches} '
+        . '{--offset=0 : Start from this PersonID offset} '
+        . '{--resume : Continue from last saved progress} '
+        . '{--reset : Clear saved progress and start from the beginning} '
+        . '{--timeout=120 : HTTP timeout in seconds per batch}';
+    protected $description = 'Import all Person records into Meilisearch index in batches, resumable, isolating any record Meilisearch rejects';
+
+    private const STATE_FILE = 'meilisearch-import.state';
 
     public function handle(): int
     {
         $client = new Client(
             config('scout.meilisearch.host'),
-            config('scout.meilisearch.key')
+            config('scout.meilisearch.key'),
+            new GuzzleHttpClient([
+                'timeout' => max(1, (int) $this->option('timeout')),
+                'connect_timeout' => 30,
+            ])
         );
 
         $index = $client->index('persons_index');
+        $statePath = storage_path('app/' . self::STATE_FILE);
+
+        if ($this->option('reset')) {
+            @unlink($statePath);
+            $this->info('Saved progress cleared.');
+        }
+
+        $lastPersonId = null;
+        if ($this->option('resume') && file_exists($statePath)) {
+            $state = json_decode((string) file_get_contents($statePath), true);
+            $lastPersonId = $state['lastPersonId'] ?? null;
+            if ($lastPersonId) {
+                $this->info("Resuming from PersonID: {$lastPersonId}");
+            }
+        } elseif ($this->option('resume')) {
+            $this->warn('No saved progress found. Starting from the beginning.');
+        }
 
         $chunkSize = max(1, (int) $this->option('chunk'));
-        $offset = trim((string) $this->option('offset'));
-        $total = Person::count();
-        $remaining = $total;
+        $waitMs = max(0, (int) $this->option('wait'));
 
-        if ($remaining <= 0) {
-            $this->info("Nothing to import. Total: {$total}, Offset: {$offset}");
+        $query = Person::query()->orderBy('PersonID');
+
+        $offset = trim((string) $this->option('offset'));
+        if ($offset !== '') {
+            $query->where('PersonID', '>', $offset);
+        } elseif ($lastPersonId !== null) {
+            $query->where('PersonID', '>', $lastPersonId);
+        }
+
+        $total = (clone $query)->count();
+        if ($total <= 0) {
+            $this->info("Nothing to import (after filter).");
             return self::SUCCESS;
         }
 
-        $batches = (int) ceil($remaining / $chunkSize);
-
-        $this->info("Persons: {$total} | Offset: {$offset} | Remaining: {$remaining} | Chunk: {$chunkSize} | Batches: {$batches}");
+        $batches = (int) ceil($total / $chunkSize);
+        $this->info("Remaining: {$total} | Chunk: {$chunkSize} | Batches: {$batches}");
         $this->newLine();
 
         $start = microtime(true);
         $sent = 0;
         $skipped = [];
-        $bar = $this->output->createProgressBar($remaining);
+        $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $query = Person::query()->orderBy('PersonID');
-        if ($offset !== '') {
-            $query->where('PersonID', '>', $offset);
-        }
-
-        $query->chunk($chunkSize, function ($people) use ($index, &$sent, &$skipped, $bar, $remaining) {
+        $query->chunk($chunkSize, function ($people) use ($index, &$sent, &$skipped, $bar, $waitMs, $statePath) {
             $docs = $people->map(fn($p) => $p->toSearchableArray())->toArray();
+            $lastInChunk = (string) $people->last()->PersonID;
 
             try {
                 $index->addDocuments($docs);
@@ -66,14 +99,19 @@ class ImportMeilisearch extends Command
                 $sent += count($docs) - count($bad);
             }
 
+            $this->saveProgress($statePath, $lastInChunk);
             $bar->advance(count($docs));
+
+            if ($waitMs > 0) {
+                usleep($waitMs * 1000);
+            }
         });
 
         $bar->finish();
         $this->newLine(2);
 
         $time = round((microtime(true) - $start), 1);
-        $this->info("Done. {$sent} documents imported from offset {$offset} in {$time}s");
+        $this->info("Done. {$sent} documents imported in {$time}s");
 
         if (!empty($skipped)) {
             $this->warn("Skipped " . count($skipped) . " bad records: " . implode(', ', array_slice($skipped, 0, 20)));
@@ -118,6 +156,17 @@ class ImportMeilisearch extends Command
         }
 
         return $bad;
+    }
+
+    private function saveProgress(string $statePath, string $lastPersonId): void
+    {
+        file_put_contents(
+            $statePath,
+            json_encode([
+                'lastPersonId' => $lastPersonId,
+                'updated_at'   => now()->toIso8601String(),
+            ], JSON_THROW_ON_ERROR)
+        );
     }
 
     /**
