@@ -24,7 +24,7 @@ Schedule::command('imports:resume-stalled')
     ->everyMinute()
     ->withoutOverlapping();
 
-Schedule::command('meilisearch:import --resume --chunk=5000 --timeout=300')
+Schedule::command('meilisearch:import --resume --chunk=5000 --timeout=600')
     ->everyFiveMinutes()
-    ->withoutOverlapping()
+    ->withoutOverlapping(30)
     ->runInBackground();
