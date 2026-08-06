@@ -94,7 +94,15 @@ class ImportMeilisearch extends Command
                 $sent += count($docs);
             } catch (ApiException $e) {
                 $this->warn("Batch rejected ({$e->getMessage()}), isolating bad records...");
-                $bad = $this->isolateBadRecords($docs, $index);
+
+                try {
+                    $bad = $this->isolateBadRecords($docs, $index);
+                } catch (\Throwable $e) {
+                    $this->error("Batch ending at {$lastInChunk} failed during isolation: {$e->getMessage()}");
+                    $this->warn('Progress kept at the last successful batch. Re-run with --resume to continue from there.');
+
+                    return false;
+                }
 
                 foreach ($bad as $badDoc) {
                     $skipped[] = $badDoc['PersonID'] ?? '(unknown)';
@@ -155,7 +163,7 @@ class ImportMeilisearch extends Command
             }
 
             try {
-                $index->addDocuments($slice);
+                $this->sendWithRetry($index, $slice);
 
                 continue;
             } catch (ApiException) {
@@ -176,7 +184,7 @@ class ImportMeilisearch extends Command
      *
      * @param  array<int, array<string, mixed>>  $docs
      */
-    private function sendWithRetry($index, array $docs, int $retries = 4): void
+    private function sendWithRetry($index, array $docs, int $retries = 5): void
     {
         $attempt = 0;
 
