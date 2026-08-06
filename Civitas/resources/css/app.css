@@ -8,19 +8,19 @@
   html {
     scroll-behavior: smooth;
   }
+}
 
-  /* Landing: open the mobile navigation when the hamburger is toggled */
-  @media (max-width: 1023px) {
-    #nav[data-state="active"] #navLayer {
-      transform: scaleY(1);
-    }
+/* Landing: open the mobile navigation when the hamburger is toggled */
+@media (max-width: 1023px) {
+  #nav[data-state="active"] #navLayer {
+    transform: scaleY(1);
+  }
 
-    #nav[data-state="active"] #navlinks {
-      visibility: visible;
-      display: flex;
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+  #nav[data-state="active"] #navlinks {
+    visibility: visible;
+    display: flex;
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
