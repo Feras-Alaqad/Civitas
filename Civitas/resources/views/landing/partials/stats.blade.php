@@ -1,10 +1,10 @@
 <div id="solution">
     <div class="max-w-7xl mx-auto px-6 md:px-12">
         <div class="space-y-6 justify-between text-gray-600 md:flex flex-row-reverse md:gap-6 lg:gap-12 lg:items-center">
-            <div class="md:5/12 lg:w-1/2">
+            <div class="md:w-5/12 lg:w-1/2">
                 <img src="{{ asset('landing/images/pie.svg') }}" alt="Civitas analytics preview" loading="lazy" class="w-full" />
             </div>
-            <div class="md:7/12 lg:w-1/2">
+            <div class="md:w-7/12 lg:w-1/2">
                 <h2 class="text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">From record lookup to delivered service</h2>
                 <p class="my-8 text-gray-600 dark:text-gray-300">Most civic offices juggle paper forms, spreadsheets, and separate payment systems. Civitas replaces them all — every citizen, service request, and payment lives in one audited system built to stay fast as your data grows.</p>
                 <div class="divide-y space-y-4 divide-gray-100 dark:divide-gray-800">

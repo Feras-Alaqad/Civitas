@@ -4,9 +4,9 @@
         <div class="blur-[106px] h-32 bg-gradient-to-r from-brand-300 to-brand-100 dark:to-brand-500"></div>
     </div>
     <div class="max-w-7xl mx-auto px-6 md:px-12">
-        <div class="relative pt-36 ml-auto">
+        <div class="relative pt-28 sm:pt-36 ml-auto">
             <div class="lg:w-2/3 text-center mx-auto">
-                <h1 class="text-gray-900 text-balance dark:text-white font-bold text-5xl md:text-6xl xl:text-7xl">Run your <span class="text-brand-500 dark:text-brand-300">citizen services</span> from one dashboard</h1>
+                <h1 class="text-gray-900 text-balance dark:text-white font-bold text-4xl sm:text-5xl md:text-6xl xl:text-7xl">Run your <span class="text-brand-500 dark:text-brand-300">citizen services</span> from one dashboard</h1>
                 <p class="mt-8 text-gray-700 dark:text-gray-300">Civitas unifies citizen records, service requests, and payments in a single secure platform. Find any person in milliseconds, process applications in minutes, and keep a full audit trail of every action.</p>
                 <div class="mt-16 flex flex-wrap justify-center gap-y-4 gap-x-6">
                     <a href="{{ route('register') }}" class="relative flex h-12 w-full items-center justify-center px-6 before:absolute before:inset-0 before:rounded-full before:bg-brand-500 before:transition before:duration-300 hover:before:scale-105 active:duration-75 active:before:scale-95 sm:w-max">

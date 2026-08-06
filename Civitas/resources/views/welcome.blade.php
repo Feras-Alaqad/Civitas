@@ -14,7 +14,7 @@
 <body class="bg-white dark:bg-gray-950">
     @include('landing.partials.header')
 
-    <main class="space-y-40 mb-40">
+    <main class="space-y-24 mb-24 md:space-y-40 md:mb-40">
         @include('landing.partials.hero')
         @include('landing.partials.features')
         @include('landing.partials.stats')

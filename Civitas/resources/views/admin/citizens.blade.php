@@ -7,7 +7,7 @@
 @section('content')
 <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
     @if($selectedPerson)
-    <div class="flex items-center gap-3 px-5 py-4">
+    <div class="flex flex-wrap items-center gap-3 px-5 py-4">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Person Details</h3>
         <a href="{{ route('admin.citizens') }}" class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors">
             <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
@@ -24,8 +24,8 @@
     </div>
     @else
     {{-- Title + Search Row --}}
-    <div class="flex items-center gap-4 px-5 pt-4 pb-4">
-        <div class="flex shrink-0 items-center gap-3">
+    <div class="flex flex-col gap-4 px-5 pt-4 pb-4 sm:flex-row sm:items-center">
+        <div class="flex shrink-0 flex-wrap items-center gap-3">
             <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Persons</h3>
             <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-sm font-semibold text-brand-600 dark:bg-brand-500/15 dark:text-brand-500">
                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +42,7 @@
             </span>
             @endisset
         </div>
-        <form method="GET" action="{{ route('admin.citizens') }}" class="relative flex-1">
+        <form method="GET" action="{{ route('admin.citizens') }}" class="relative w-full flex-1">
             <div class="relative">
                 <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -115,7 +115,7 @@
 
         {{-- Service Requests --}}
         <div class="border-t border-gray-100 dark:border-gray-800 px-5 sm:px-6 py-4">
-            <div class="flex items-center justify-between mb-4">
+            <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-2.5">
                     <h4 class="text-base font-semibold text-gray-800 dark:text-white/90">Service Requests</h4>
                     <span class="inline-flex items-center justify-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">{{ $serviceRequests->count() }} requests</span>
