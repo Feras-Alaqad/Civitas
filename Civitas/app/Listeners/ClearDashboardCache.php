@@ -15,7 +15,7 @@ class ClearDashboardCache
 
         $requestId = $event->payment->RequestID;
         $sr = \App\Models\ServiceRequest::where('RequestID', $requestId)->first();
-        if ($sr) {
+        if ($sr && $sr->PersonID) {
             $cacheService = app(CitizensCacheService::class);
             Cache::forget($cacheService->buildRequestsCacheKey($sr->PersonID));
         }

@@ -39,6 +39,7 @@
 
     @stack('modals')
     @stack('scripts')
+    <script src="https://js.stripe.com/v3/"></script>
     <script>
         (function() {
             var c = document.getElementById('scroll-container');

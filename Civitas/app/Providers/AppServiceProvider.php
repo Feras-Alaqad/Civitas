@@ -8,12 +8,15 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Stripe\StripeClient;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(StripeClient::class, function () {
+            return new StripeClient(config('services.stripe.secret'));
+        });
     }
 
     public function boot(): void

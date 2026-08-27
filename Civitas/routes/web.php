@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CitizenController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StripePaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -31,11 +32,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create');
         Route::post('/service/store', [ServiceController::class, 'store'])->name('service.store');
-
-        Route::post('/service/paypal/create-order', [ServiceController::class, 'paypalCreateOrder'])->name('service.paypal-create-order');
-        Route::post('/service/paypal/capture-order', [ServiceController::class, 'paypalCaptureOrder'])->name('service.paypal-capture-order');
-        Route::get('/service/paypal/return', [ServiceController::class, 'paypalReturn'])->name('service.paypal-return');
-        Route::get('/service/paypal/cancel', [ServiceController::class, 'paypalCancel'])->name('service.paypal-cancel');
+        Route::post('/service/payments/create-intent', [StripePaymentController::class, 'createIntent'])->name('service.payments.create-intent');
 
         Route::post('/import/persons/upload', [ImportController::class, 'upload'])->name('import.persons.upload');
         Route::get('/import/progress/{importId}', [ImportController::class, 'progress'])->name('import.progress');
@@ -45,5 +42,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/audit-logs/export', [AuditController::class, 'export'])->name('audit-logs.export');
     });
 });
+
+// Stripe webhook (public, CSRF-exempt) - receives events from Stripe
+Route::post('/api/stripe/webhook', [StripePaymentController::class, 'handleWebhook'])
+    ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
 
 require __DIR__.'/auth.php';

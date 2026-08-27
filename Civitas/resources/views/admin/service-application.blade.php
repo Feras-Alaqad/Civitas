@@ -376,15 +376,20 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 rounded-lg bg-gray-50 px-4 py-3 dark:bg-gray-700/30 mb-5">
+                <div class="flex items-center gap-2 rounded-lg bg-gray-50 px-4 py-3 dark:bg-gray-700/30 mb-4">
                     <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                     </svg>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">Secure payment via PayPal Sandbox</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Secure payment via Stripe</span>
                 </div>
 
-                {{-- PayPal Button Container --}}
-                <div id="paypal-button-container" class="mb-3"></div>
+                {{-- Stripe Payment Element Container --}}
+                <div id="stripeCardElement" class="mb-4 rounded-lg border border-gray-200 p-3 dark:border-gray-700"></div>
+                <p id="paymentErrorMsg" class="mb-3 hidden rounded-lg bg-red-50 px-4 py-2.5 text-xs font-medium text-red-600 dark:bg-red-500/10 dark:text-red-400"></p>
+
+                <button type="button" id="payBtn" onclick="confirmStripePayment()" class="mb-3 w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60 transition-colors">
+                    Pay
+                </button>
 
                 <button onclick="closePaymentModal()" class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
                     Cancel
@@ -445,7 +450,7 @@
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="text-xs text-gray-400 dark:text-gray-500">Payment Method</span>
-                            <span class="text-xs font-semibold text-gray-800 dark:text-white/90">PayPal</span>
+                            <span class="text-xs font-semibold text-gray-800 dark:text-white/90">Stripe</span>
                         </div>
                         <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
                             <div class="flex items-center justify-between">
@@ -471,10 +476,7 @@
             </div>
         </div>
     </div>
-</div>
-
-{{-- PayPal SDK --}}
-<script src="https://www.paypal.com/sdk/js?client-id={{ config('services.paypal.client_id') }}&currency=USD&intent=capture" data-sdk-integration-source="button-factory"></script>
+ </div>
 
 <script>
 const PERSON_ID = '{{ $person->PersonID }}';
@@ -654,6 +656,11 @@ function removeFile(index) {
     if (uploadedFiles.length === 0) clearFileError();
 }
 
+let stripe = null;
+let stripeElements = null;
+let stripePaymentElement = null;
+let stripeFlowLocked = false;
+
 function showPaymentModal() {
     if (!selectedService) {
         alert('Please select a service type first.');
@@ -669,6 +676,12 @@ function showPaymentModal() {
         return;
     }
 
+    if (stripeFlowLocked) return;
+
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+
     document.getElementById('paymentModalService').textContent = selectedService.name;
     document.getElementById('paymentModalPerson').textContent = PERSON_NAME;
     document.getElementById('paymentModalAmount').textContent = '$' + selectedService.fees.toFixed(2);
@@ -677,100 +690,37 @@ function showPaymentModal() {
     document.getElementById('paymentStepProcessing').classList.add('hidden');
     document.getElementById('paymentStepReceipt').classList.add('hidden');
 
+    hidePaymentError();
+
+    const cardEl = document.getElementById('stripeCardElement');
+    cardEl.innerHTML = '<div class="py-8 text-center text-sm text-gray-400 dark:text-gray-500">Preparing payment form...</div>';
+    document.getElementById('payBtn').disabled = true;
+
     document.getElementById('paymentModal').style.display = 'flex';
 
-    initPayPalButton();
-}
-
-function closePaymentModal() {
-    document.getElementById('paymentModal').style.display = 'none';
-}
-
-function initPayPalButton() {
-    const container = document.getElementById('paypal-button-container');
-    container.innerHTML = '';
-
-    if (typeof paypal === 'undefined') {
-        container.innerHTML = `
-            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center dark:border-amber-500/20 dark:bg-amber-500/10">
-                <p class="text-xs text-amber-600 dark:text-amber-400">PayPal SDK not loaded. Configure your PayPal Client ID in <code>.env</code>.</p>
-                <button type="button" onclick="simulatePayment()" class="mt-3 rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 transition-colors">
-                    Simulate Payment (Dev Mode)
-                </button>
-            </div>
-        `;
-        return;
-    }
-
-    paypal.Buttons({
-        style: {
-            layout: 'vertical',
-            color: 'blue',
-            shape: 'rect',
-            label: 'pay',
-        },
-        createOrder: function(data, actions) {
-            return actions.order.create({
-                purchase_units: [{
-                    amount: {
-                        value: selectedService.fees.toFixed(2),
-                    },
-                }],
-            });
-        },
-        onApprove: function(data, actions) {
-            showProcessingStep();
-            return actions.order.capture().then(function(details) {
-                submitServiceRequest(data.orderID, details);
-            });
-        },
-        onError: function(err) {
-            console.error('PayPal error:', err);
-            alert('Payment failed. Please try again.');
-            closePaymentModal();
-        },
-        onCancel: function() {
-            closePaymentModal();
-        }
-    }).render('#paypal-button-container');
-}
-
-function simulatePayment() {
-    showProcessingStep();
-
-    setTimeout(() => {
-        submitServiceRequest('SIMULATED-' + Date.now(), {
-            id: 'SIMULATED-' + Date.now(),
-            status: 'COMPLETED',
-            payer: { payer_id: 'SIMULATED_PAYER' },
-            purchase_units: [{
-                payments: {
-                    captures: [{
-                        id: 'SIMULATED-CAPTURE-' + Date.now(),
-                        amount: { value: selectedService.fees.toFixed(2), currency_code: 'USD' },
-                    }],
-                },
-            }],
+    createServiceRequest()
+        .then(requestId => createPaymentIntent(requestId))
+        .then(clientSecret => initStripePaymentElement(clientSecret))
+        .catch(err => {
+            console.error('Error:', err);
+            hidePaymentError();
+            showPaymentError(err.message || 'Unable to start the payment process.');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
         });
-    }, 1500);
 }
 
-function showProcessingStep() {
-    document.getElementById('paymentStepConfirm').classList.add('hidden');
-    document.getElementById('paymentStepProcessing').classList.remove('hidden');
-}
-
-function submitServiceRequest(orderID, paymentDetails) {
+function createServiceRequest() {
     const formData = new FormData();
     formData.append('person_id', PERSON_ID);
     formData.append('service_type_id', selectedService.id);
-    formData.append('payment_method', 'paypal');
+    formData.append('payment_method', 'stripe');
 
     uploadedFiles.forEach(file => {
         formData.append('documents[]', file);
     });
 
-    fetch('{{ route("admin.service.store") }}', {
+    return fetch('{{ route("admin.service.store") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': CSRF_TOKEN,
@@ -781,39 +731,141 @@ function submitServiceRequest(orderID, paymentDetails) {
     .then(res => res.json())
     .then(data => {
         if (!data.success) throw new Error(data.message || 'Failed to create service request');
-
-        return fetch('{{ route("admin.service.paypal-capture-order") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': CSRF_TOKEN,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: JSON.stringify({
-                order_id: orderID,
-                request_id: data.request_id,
-            }),
-        });
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.error) throw new Error(data.error);
-
-        showReceiptStep(data, orderID);
-    })
-    .catch(err => {
-        console.error('Error:', err);
-        alert('Error: ' + err.message);
-        closePaymentModal();
+        return data.request_id;
     });
 }
 
-function showReceiptStep(paymentData, orderID) {
+function createPaymentIntent(requestId) {
+    return fetch('{{ route("admin.service.payments.create-intent") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': CSRF_TOKEN,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ request_id: requestId }),
+    })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+        if (!ok || !data.client_secret) {
+            throw new Error(data.message || 'Unable to start the payment process.');
+        }
+        return data.client_secret;
+    });
+}
+
+function initStripePaymentElement(clientSecret) {
+    if (!stripe) {
+        stripe = Stripe('{{ config('services.stripe.key') }}');
+    }
+    if (stripeElements) {
+        stripeElements = null;
+        stripePaymentElement = null;
+    }
+
+    stripeElements = stripe.elements({ clientSecret });
+    stripePaymentElement = stripeElements.create('payment', {
+        layout: 'tabs',
+    });
+    stripePaymentElement.mount('#stripeCardElement');
+
+    document.getElementById('payBtn').disabled = false;
+
+    stripePaymentElement.on('change', (event) => {
+        const payBtn = document.getElementById('payBtn');
+        payBtn.disabled = event.complete ? false : true;
+        if (event.error) {
+            showPaymentError(event.error.message);
+        } else {
+            hidePaymentError();
+        }
+    });
+}
+
+function confirmStripePayment() {
+    if (!stripeElements || !stripePaymentElement) return;
+    if (stripeFlowLocked) return;
+    stripeFlowLocked = true;
+
+    const payBtn = document.getElementById('payBtn');
+    payBtn.disabled = true;
+
+    hidePaymentError();
+
+    stripeElements.submit().then(async () => {
+        showProcessingStep();
+
+        const { error, paymentIntent } = await stripe.confirmPayment({
+            elements: stripeElements,
+            redirect: 'if_required',
+            confirmParams: {
+                return_url: window.location.origin + '/admin/citizens?person_id=' + PERSON_ID,
+            },
+        });
+
+        if (error) {
+            hideProcessingStep();
+            showPaymentError(error.message || 'Payment failed. Please try again.');
+            stripeFlowLocked = false;
+            payBtn.disabled = false;
+            return;
+        }
+
+        if (paymentIntent && paymentIntent.status === 'succeeded') {
+            stripeFlowLocked = false;
+            showReceiptStep(paymentIntent);
+        } else if (paymentIntent && (paymentIntent.status === 'processing' || paymentIntent.status === 'requires_capture')) {
+            stripeFlowLocked = false;
+            showReceiptStep(paymentIntent);
+        } else {
+            hideProcessingStep();
+            showPaymentError('Payment is still pending. Please check again in a moment.');
+            stripeFlowLocked = false;
+            payBtn.disabled = false;
+        }
+    }).catch(err => {
+        console.error('Stripe error:', err);
+        hideProcessingStep();
+        showPaymentError('Payment failed. Please try again.');
+        stripeFlowLocked = false;
+        payBtn.disabled = false;
+    });
+}
+
+function showPaymentError(message) {
+    const el = document.getElementById('paymentErrorMsg');
+    if (!message) { hidePaymentError(); return; }
+    el.textContent = message;
+    el.classList.remove('hidden');
+}
+
+function hidePaymentError() {
+    const el = document.getElementById('paymentErrorMsg');
+    el.classList.add('hidden');
+    el.textContent = '';
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+}
+
+function showProcessingStep() {
+    document.getElementById('paymentStepConfirm').classList.add('hidden');
+    document.getElementById('paymentStepProcessing').classList.remove('hidden');
+}
+
+function hideProcessingStep() {
+    document.getElementById('paymentStepProcessing').classList.add('hidden');
+    document.getElementById('paymentStepConfirm').classList.remove('hidden');
+}
+
+function showReceiptStep(paymentIntent) {
     document.getElementById('paymentStepProcessing').classList.add('hidden');
     document.getElementById('paymentStepReceipt').classList.remove('hidden');
 
-    const receiptNumber = paymentData.receipt_number || 'RCPT-' + Date.now();
-    const amount = paymentData.amount || selectedService.fees.toFixed(2);
+    const receiptNumber = 'RCPT-' + Date.now();
+    const cents = Number(paymentIntent.amount || (selectedService.fees * 100));
+    const amount = (cents / 100).toFixed(2);
     const now = new Date();
 
     document.getElementById('receiptNumber').textContent = receiptNumber;
@@ -822,7 +874,7 @@ function showReceiptStep(paymentData, orderID) {
     document.getElementById('receiptDate').textContent = now.toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
     });
-    document.getElementById('receiptAmount').textContent = '$' + parseFloat(amount).toFixed(2);
+    document.getElementById('receiptAmount').textContent = '$' + amount;
 }
 
 function printReceipt() {

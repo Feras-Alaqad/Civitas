@@ -35,13 +35,11 @@ return [
         ],
     ],
 
-    'paypal' => [
-        'mode' => env('PAYPAL_MODE', 'sandbox'),
-        'client_id' => env('PAYPAL_CLIENT_ID'),
-        'client_secret' => env('PAYPAL_CLIENT_SECRET'),
-        'guzzle' => [
-            'verify' => filter_var(env('PAYPAL_SSL_VERIFY', 'true'), FILTER_VALIDATE_BOOLEAN),
-        ],
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'currency' => env('STRIPE_CURRENCY', 'usd'),
     ],
 
     'google' => [

@@ -19,9 +19,12 @@ class Payment extends Model
         'Amount',
         'PaymentDate',
         'ReceiptNumber',
-        'PayPalOrderID',
-        'PayPalPayerID',
+        'StripePaymentIntentID',
+        'Currency',
         'Status',
+        'Metadata',
+        'PaidAt',
+        'FailureReason',
     ];
 
     protected function casts(): array
@@ -29,6 +32,8 @@ class Payment extends Model
         return [
             'Amount' => 'decimal:2',
             'PaymentDate' => 'datetime',
+            'PaidAt' => 'datetime',
+            'Metadata' => 'array',
         ];
     }
 
