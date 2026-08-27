@@ -47,6 +47,6 @@ Route::middleware('auth')->group(function () {
 
 // Stripe webhook (public, CSRF-exempt) - receives events from Stripe
 Route::post('/api/stripe/webhook', [StripePaymentController::class, 'handleWebhook'])
-    ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
+    ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class);
 
 require __DIR__.'/auth.php';
