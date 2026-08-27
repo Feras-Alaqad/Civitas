@@ -18,6 +18,100 @@ use Stripe\Webhook;
 class StripePaymentController extends Controller
 {
     /**
+     * Show a dedicated, full-page Stripe checkout for an existing service request.
+     */
+    public function paymentPage(string $requestId)
+    {
+        $serviceRequest = ServiceRequest::with('serviceType')->findOrFail($requestId);
+
+        if ($serviceRequest->UserID !== Auth::id()) {
+            abort(403, 'You are not authorized to pay for this service request.');
+        }
+
+        if (in_array($serviceRequest->Status, ['Paid', 'Completed', 'Cancelled'], true)) {
+            return view('admin.payment-page', [
+                'serviceRequest' => $serviceRequest,
+                'person' => $serviceRequest->person,
+                'serviceType' => $serviceRequest->serviceType,
+                'clientSecret' => null,
+                'payment' => $serviceRequest->payment,
+                'alreadyProcessed' => true,
+            ]);
+        }
+
+        try {
+            $clientSecret = $this->intentClientSecret($serviceRequest);
+        } catch (ApiErrorException $e) {
+            Log::error('Stripe: PaymentIntent preparation failed', [
+                'request_id' => $serviceRequest->RequestID,
+                'error' => $e->getMessage(),
+            ]);
+
+            return view('admin.payment-page', [
+                'serviceRequest' => $serviceRequest,
+                'person' => $serviceRequest->person,
+                'serviceType' => $serviceRequest->serviceType,
+                'clientSecret' => null,
+                'payment' => $serviceRequest->payment,
+                'alreadyProcessed' => false,
+                'setupError' => $e->getMessage(),
+            ]);
+        }
+
+        return view('admin.payment-page', [
+            'serviceRequest' => $serviceRequest,
+            'person' => $serviceRequest->person,
+            'serviceType' => $serviceRequest->serviceType,
+            'clientSecret' => $clientSecret,
+            'currency' => strtolower(config('services.stripe.currency', 'usd')),
+        ]);
+    }
+
+    /**
+     * Create (or reuse) the Stripe PaymentIntent for the given request and return its client secret.
+     */
+    protected function intentClientSecret(ServiceRequest $serviceRequest): string
+    {
+        $existing = Payment::where('RequestID', $serviceRequest->RequestID)
+            ->where('Status', 'pending')
+            ->whereNotNull('StripePaymentIntentID')
+            ->first();
+
+        if ($existing) {
+            $intent = $this->client()->paymentIntents->retrieve($existing->StripePaymentIntentID);
+
+            if ($intent->status === 'requires_payment_method' || $intent->status === 'requires_confirmation') {
+                return $intent->client_secret;
+            }
+        }
+
+        $amountMinor = (int) round((float) $serviceRequest->serviceType?->Fees * 100);
+        $currency = strtolower(config('services.stripe.currency', 'usd'));
+
+        $intent = $this->client()->paymentIntents->create([
+            'amount' => $amountMinor,
+            'currency' => $currency,
+            'automatic_payment_methods' => ['enabled' => true],
+            'metadata' => [
+                'request_id' => $serviceRequest->RequestID,
+                'person_id' => $serviceRequest->PersonID,
+            ],
+        ]);
+
+        Payment::create([
+            'RequestID' => $serviceRequest->RequestID,
+            'Amount' => $serviceRequest->serviceType?->Fees,
+            'PaymentDate' => now(),
+            'ReceiptNumber' => null,
+            'StripePaymentIntentID' => $intent->id,
+            'Currency' => strtoupper($currency),
+            'Status' => 'pending',
+        ]);
+
+        return $intent->client_secret;
+    }
+
+    /**
      * Create (or reuse) a Stripe PaymentIntent for a given service request.
      *
      * The amount is always recomputed server-side from the service fees and is never
@@ -95,6 +189,38 @@ class StripePaymentController extends Controller
         return response()->json([
             'success' => true,
             'client_secret' => $intent->client_secret,
+        ]);
+    }
+
+    /**
+     * Return the authoritative payment / request status for a service request.
+     *
+     * This is the source of truth for the frontend: a payment is considered
+     * successful only when the backend has confirmed it (via the Stripe webhook
+     * and the FinalizeSuccessfulPayment job). Never rely on the client alone.
+     */
+    public function status(string $requestId)
+    {
+        $serviceRequest = ServiceRequest::with('serviceType')->findOrFail($requestId);
+
+        if ($serviceRequest->UserID !== Auth::id()) {
+            abort(403, 'You are not authorized to view this service request.');
+        }
+
+        $payment = $serviceRequest->payment;
+
+        $isFinalized = $payment?->Status === 'succeeded'
+            && in_array($serviceRequest->Status, ['Completed', 'Paid'], true);
+
+        return response()->json([
+            'success' => true,
+            'request_status' => $serviceRequest->Status,
+            'payment_status' => $payment?->Status,
+            'is_finalized' => $isFinalized,
+            'receipt_number' => $payment?->ReceiptNumber,
+            'amount' => (float) $payment?->Amount,
+            'currency' => $payment?->Currency,
+            'fail_reason' => $payment?->FailureReason,
         ]);
     }
 

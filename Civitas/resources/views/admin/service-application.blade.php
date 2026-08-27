@@ -205,7 +205,7 @@
         <div class="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
             <div>
                 <p class="text-sm font-semibold text-gray-800 dark:text-white/90">{{ $person->FullName }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">ID: {{ $person->NationalID ?? '—' }} | {{ $person->GovernorateName ?? '—' }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">ID: {{ $person->NationalID ?? 'â€”' }} | {{ $person->GovernorateName ?? 'â€”' }}</p>
             </div>
         </div>
     </div>
@@ -233,10 +233,10 @@
                             'folder' => '<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>',
                         ];
                         $deptIconKey = [
-                            'قسم الجوازات' => 'passport',
-                            'قسم المالية' => 'finance',
-                            'الشؤون القانونية' => 'legal',
-                            '—' => 'folder',
+                            'ظ‚ط³ظ… ط§ظ„ط¬ظˆط§ط²ط§طھ' => 'passport',
+                            'ظ‚ط³ظ… ط§ظ„ظ…ط§ظ„ظٹط©' => 'finance',
+                            'ط§ظ„ط´ط¤ظˆظ† ط§ظ„ظ‚ط§ظ†ظˆظ†ظٹط©' => 'legal',
+                            'â€”' => 'folder',
                         ];
                         @endphp
                         <button type="button" class="department-tab active" data-dept="all">
@@ -260,7 +260,7 @@
                            data-service-name="{{ $st->ServiceName }}"
                            data-service-fees="{{ $st->Fees }}"
                            data-service-docs="{{ $st->RequiredDocuments ?? '' }}"
-                           data-department="{{ $st->department?->DepartmentName ?? '—' }}">
+                           data-department="{{ $st->department?->DepartmentName ?? 'â€”' }}">
                         <input type="radio" name="service_type_id" value="{{ $st->ServiceTypeID }}" class="sr-only" required>
 
                         <div class="check-indicator absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg shadow-brand-500/30 transition-all duration-300 scale-0 opacity-0 has-[:checked]:scale-100 has-[:checked]:opacity-100 dark:bg-brand-400 dark:shadow-brand-400/30">
@@ -273,7 +273,7 @@
                             <span class="text-sm font-semibold text-gray-800 transition-colors duration-300 group-has-[:checked]:text-brand-700 dark:text-white/90 dark:group-has-[:checked]:text-brand-300">{{ $st->ServiceName }}</span>
                             <span class="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-600 transition-all duration-300 group-has-[:checked]:bg-brand-500 group-has-[:checked]:text-white dark:bg-brand-500/15 dark:text-brand-400 dark:group-has-[:checked]:bg-brand-400 dark:group-has-[:checked]:text-white">${{ number_format($st->Fees, 2) }}</span>
                         </div>
-                        <span class="text-[11px] text-gray-400 dark:text-gray-500">{{ $st->department?->DepartmentName ?? '—' }}</span>
+                        <span class="text-[11px] text-gray-400 dark:text-gray-500">{{ $st->department?->DepartmentName ?? 'â€”' }}</span>
                         @if($st->RequiredDocuments)
                         <span class="mt-2 text-[11px] text-gray-400 dark:text-gray-500 line-clamp-2">{{ $st->RequiredDocuments }}</span>
                         @endif
@@ -331,7 +331,7 @@
 
             {{-- Submit --}}
             <div id="submitSection" class="hidden" style="animation: slideDown 0.4s ease-out">
-                <button type="button" id="submitBtn" onclick="showPaymentModal()"
+                <button type="button" id="submitBtn" onclick="proceedToPayment()"
                     class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 hover:bg-brand-600 hover:shadow-xl hover:shadow-brand-500/30 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
@@ -342,141 +342,6 @@
         </form>
     </div>
 </div>
-
-{{-- Payment Confirmation Modal --}}
-<div id="paymentModal"
-     class="fixed inset-0 z-[999] hidden items-center justify-center bg-black/45"
-     style="display: none;">
-    <div class="w-[480px] max-w-[92%] rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
-
-        {{-- Step 1: Confirm Payment --}}
-        <div id="paymentStepConfirm">
-            <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-700">
-                <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">Confirm Payment</h3>
-                <button onclick="closePaymentModal()" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="p-6">
-                <div class="mb-5 flex flex-col items-center gap-3">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-500/15">
-                        <svg class="h-7 w-7 text-brand-600 dark:text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                        </svg>
-                    </div>
-                    <div class="text-center">
-                        <p id="paymentModalService" class="text-sm font-semibold text-gray-800 dark:text-white/90"></p>
-                        <p id="paymentModalPerson" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"></p>
-                    </div>
-                    <div class="rounded-xl bg-gray-50 px-6 py-3 dark:bg-gray-700/50">
-                        <p class="text-xs text-gray-400 dark:text-gray-500 text-center">Amount to Pay</p>
-                        <p id="paymentModalAmount" class="text-2xl font-bold text-gray-800 dark:text-white/90 text-center"></p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2 rounded-lg bg-gray-50 px-4 py-3 dark:bg-gray-700/30 mb-4">
-                    <svg class="h-4 w-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                    </svg>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">Secure payment via Stripe</span>
-                </div>
-
-                {{-- Stripe Payment Element Container --}}
-                <div id="stripeCardElement" class="mb-4 rounded-lg border border-gray-200 p-3 dark:border-gray-700"></div>
-                <p id="paymentErrorMsg" class="mb-3 hidden rounded-lg bg-red-50 px-4 py-2.5 text-xs font-medium text-red-600 dark:bg-red-500/10 dark:text-red-400"></p>
-
-                <button type="button" id="payBtn" onclick="confirmStripePayment()" class="mb-3 w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60 transition-colors">
-                    Pay
-                </button>
-
-                <button onclick="closePaymentModal()" class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
-                    Cancel
-                </button>
-            </div>
-        </div>
-
-        {{-- Step 2: Processing --}}
-        <div id="paymentStepProcessing" class="hidden">
-            <div class="flex flex-col items-center justify-center py-16 px-6">
-                <svg class="mb-4 h-12 w-12 text-brand-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                <p class="text-sm font-semibold text-gray-800 dark:text-white/90">Processing Payment...</p>
-                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Please do not close this window</p>
-            </div>
-        </div>
-
-        {{-- Step 3: Receipt --}}
-        <div id="paymentStepReceipt" class="hidden">
-            <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-700">
-                <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">Payment Receipt</h3>
-                <button onclick="closePaymentModal(); window.location='{{ route('admin.citizens', ['person_id' => $person->PersonID]) }}'"
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="p-6">
-                <div class="flex flex-col items-center gap-3 mb-5">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-500/15">
-                        <svg class="h-7 w-7 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                    </div>
-                    <p class="text-sm font-semibold text-green-600 dark:text-green-400">Payment Successful</p>
-                </div>
-
-                <div id="receiptContent" class="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/50">
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-gray-400 dark:text-gray-500">Receipt Number</span>
-                            <span id="receiptNumber" class="text-xs font-semibold font-mono text-gray-800 dark:text-white/90"></span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-gray-400 dark:text-gray-500">Service</span>
-                            <span id="receiptService" class="text-xs font-semibold text-gray-800 dark:text-white/90"></span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-gray-400 dark:text-gray-500">Person</span>
-                            <span id="receiptPerson" class="text-xs font-semibold text-gray-800 dark:text-white/90"></span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-gray-400 dark:text-gray-500">Date</span>
-                            <span id="receiptDate" class="text-xs font-semibold text-gray-800 dark:text-white/90"></span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-gray-400 dark:text-gray-500">Payment Method</span>
-                            <span class="text-xs font-semibold text-gray-800 dark:text-white/90">Stripe</span>
-                        </div>
-                        <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Paid</span>
-                                <span id="receiptAmount" class="text-lg font-bold text-gray-800 dark:text-white/90"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-5 flex gap-3">
-                    <button onclick="printReceipt()" class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                        </svg>
-                        Print Receipt
-                    </button>
-                    <button onclick="closePaymentModal(); window.location='{{ route('admin.citizens', ['person_id' => $person->PersonID]) }}'"
-                        class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
-                        Done
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
- </div>
 
 <script>
 const PERSON_ID = '{{ $person->PersonID }}';
@@ -661,7 +526,7 @@ let stripeElements = null;
 let stripePaymentElement = null;
 let stripeFlowLocked = false;
 
-function showPaymentModal() {
+function proceedToPayment() {
     if (!selectedService) {
         alert('Please select a service type first.');
         return;
@@ -678,39 +543,13 @@ function showPaymentModal() {
 
     if (stripeFlowLocked) return;
 
+    stripeFlowLocked = true;
+
     const submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = true;
     submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+    submitBtn.innerHTML = 'Redirecting to secure checkoutâ€¦';
 
-    document.getElementById('paymentModalService').textContent = selectedService.name;
-    document.getElementById('paymentModalPerson').textContent = PERSON_NAME;
-    document.getElementById('paymentModalAmount').textContent = '$' + selectedService.fees.toFixed(2);
-
-    document.getElementById('paymentStepConfirm').classList.remove('hidden');
-    document.getElementById('paymentStepProcessing').classList.add('hidden');
-    document.getElementById('paymentStepReceipt').classList.add('hidden');
-
-    hidePaymentError();
-
-    const cardEl = document.getElementById('stripeCardElement');
-    cardEl.innerHTML = '<div class="py-8 text-center text-sm text-gray-400 dark:text-gray-500">Preparing payment form...</div>';
-    document.getElementById('payBtn').disabled = true;
-
-    document.getElementById('paymentModal').style.display = 'flex';
-
-    createServiceRequest()
-        .then(requestId => createPaymentIntent(requestId))
-        .then(clientSecret => initStripePaymentElement(clientSecret))
-        .catch(err => {
-            console.error('Error:', err);
-            hidePaymentError();
-            showPaymentError(err.message || 'Unable to start the payment process.');
-            submitBtn.disabled = false;
-            submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
-        });
-}
-
-function createServiceRequest() {
     const formData = new FormData();
     formData.append('person_id', PERSON_ID);
     formData.append('service_type_id', selectedService.id);
@@ -720,7 +559,7 @@ function createServiceRequest() {
         formData.append('documents[]', file);
     });
 
-    return fetch('{{ route("admin.service.store") }}', {
+    fetch('{{ route("admin.service.store") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': CSRF_TOKEN,
@@ -731,190 +570,20 @@ function createServiceRequest() {
     .then(res => res.json())
     .then(data => {
         if (!data.success) throw new Error(data.message || 'Failed to create service request');
-        return data.request_id;
-    });
-}
-
-function createPaymentIntent(requestId) {
-    return fetch('{{ route("admin.service.payments.create-intent") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': CSRF_TOKEN,
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify({ request_id: requestId }),
+        window.location.href = '{{ route("admin.service.payments.page", ['requestId' => '__REQUEST_ID__']) }}'.replace('__REQUEST_ID__', data.request_id);
     })
-    .then(res => res.json().then(data => ({ ok: res.ok, data })))
-    .then(({ ok, data }) => {
-        if (!ok || !data.client_secret) {
-            throw new Error(data.message || 'Unable to start the payment process.');
-        }
-        return data.client_secret;
-    });
-}
-
-function initStripePaymentElement(clientSecret) {
-    if (!stripe) {
-        stripe = Stripe('{{ config('services.stripe.key') }}');
-    }
-    if (stripeElements) {
-        stripeElements = null;
-        stripePaymentElement = null;
-    }
-
-    stripeElements = stripe.elements({ clientSecret });
-    stripePaymentElement = stripeElements.create('payment', {
-        layout: 'tabs',
-    });
-    stripePaymentElement.mount('#stripeCardElement');
-
-    document.getElementById('payBtn').disabled = false;
-
-    stripePaymentElement.on('change', (event) => {
-        const payBtn = document.getElementById('payBtn');
-        payBtn.disabled = event.complete ? false : true;
-        if (event.error) {
-            showPaymentError(event.error.message);
-        } else {
-            hidePaymentError();
-        }
-    });
-}
-
-function confirmStripePayment() {
-    if (!stripeElements || !stripePaymentElement) return;
-    if (stripeFlowLocked) return;
-    stripeFlowLocked = true;
-
-    const payBtn = document.getElementById('payBtn');
-    payBtn.disabled = true;
-
-    hidePaymentError();
-
-    stripeElements.submit().then(async () => {
-        showProcessingStep();
-
-        const { error, paymentIntent } = await stripe.confirmPayment({
-            elements: stripeElements,
-            redirect: 'if_required',
-            confirmParams: {
-                return_url: window.location.origin + '/admin/citizens?person_id=' + PERSON_ID,
-            },
-        });
-
-        if (error) {
-            hideProcessingStep();
-            showPaymentError(error.message || 'Payment failed. Please try again.');
-            stripeFlowLocked = false;
-            payBtn.disabled = false;
-            return;
-        }
-
-        if (paymentIntent && paymentIntent.status === 'succeeded') {
-            stripeFlowLocked = false;
-            showReceiptStep(paymentIntent);
-        } else if (paymentIntent && (paymentIntent.status === 'processing' || paymentIntent.status === 'requires_capture')) {
-            stripeFlowLocked = false;
-            showReceiptStep(paymentIntent);
-        } else {
-            hideProcessingStep();
-            showPaymentError('Payment is still pending. Please check again in a moment.');
-            stripeFlowLocked = false;
-            payBtn.disabled = false;
-        }
-    }).catch(err => {
-        console.error('Stripe error:', err);
-        hideProcessingStep();
-        showPaymentError('Payment failed. Please try again.');
+    .catch(err => {
+        console.error('Error:', err);
+        alert(err.message || 'Unable to start the payment process.');
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        submitBtn.innerHTML = `
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+            </svg>
+            Proceed to Payment`;
         stripeFlowLocked = false;
-        payBtn.disabled = false;
     });
 }
-
-function showPaymentError(message) {
-    const el = document.getElementById('paymentErrorMsg');
-    if (!message) { hidePaymentError(); return; }
-    el.textContent = message;
-    el.classList.remove('hidden');
-}
-
-function hidePaymentError() {
-    const el = document.getElementById('paymentErrorMsg');
-    el.classList.add('hidden');
-    el.textContent = '';
-}
-
-function closePaymentModal() {
-    document.getElementById('paymentModal').style.display = 'none';
-}
-
-function showProcessingStep() {
-    document.getElementById('paymentStepConfirm').classList.add('hidden');
-    document.getElementById('paymentStepProcessing').classList.remove('hidden');
-}
-
-function hideProcessingStep() {
-    document.getElementById('paymentStepProcessing').classList.add('hidden');
-    document.getElementById('paymentStepConfirm').classList.remove('hidden');
-}
-
-function showReceiptStep(paymentIntent) {
-    document.getElementById('paymentStepProcessing').classList.add('hidden');
-    document.getElementById('paymentStepReceipt').classList.remove('hidden');
-
-    const receiptNumber = 'RCPT-' + Date.now();
-    const cents = Number(paymentIntent.amount || (selectedService.fees * 100));
-    const amount = (cents / 100).toFixed(2);
-    const now = new Date();
-
-    document.getElementById('receiptNumber').textContent = receiptNumber;
-    document.getElementById('receiptService').textContent = selectedService.name;
-    document.getElementById('receiptPerson').textContent = PERSON_NAME;
-    document.getElementById('receiptDate').textContent = now.toLocaleDateString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
-    document.getElementById('receiptAmount').textContent = '$' + amount;
-}
-
-function printReceipt() {
-    const content = document.getElementById('receiptContent').innerHTML;
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Payment Receipt</title>
-            <style>
-                body { font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; }
-                .flex { display: flex; justify-content: space-between; margin: 8px 0; }
-                .text-xs { font-size: 12px; }
-                .text-sm { font-size: 14px; }
-                .text-lg { font-size: 18px; }
-                .font-semibold { font-weight: 600; }
-                .font-bold { font-weight: 700; }
-                .text-gray-400 { color: #9ca3af; }
-                .text-gray-800 { color: #1f2937; }
-                .border-t { border-top: 1px solid #e5e7eb; margin-top: 12px; padding-top: 12px; }
-                .font-mono { font-family: monospace; }
-                h2 { text-align: center; margin-bottom: 20px; }
-                .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #b8924f; padding-bottom: 10px; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h2>Civitas - Payment Receipt</h2>
-            </div>
-            ${content}
-            <script>window.onload=function(){window.print();}<\/script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
-}
-
-document.getElementById('paymentModal').addEventListener('click', function(e) {
-    if (e.target === this) closePaymentModal();
-});
 </script>
 @endsection

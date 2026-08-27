@@ -32,7 +32,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create');
         Route::post('/service/store', [ServiceController::class, 'store'])->name('service.store');
+        Route::get('/service/pay/{requestId}', [StripePaymentController::class, 'paymentPage'])->name('service.payments.page');
         Route::post('/service/payments/create-intent', [StripePaymentController::class, 'createIntent'])->name('service.payments.create-intent');
+        Route::get('/service/payments/status/{requestId}', [StripePaymentController::class, 'status'])->name('service.payments.status');
 
         Route::post('/import/persons/upload', [ImportController::class, 'upload'])->name('import.persons.upload');
         Route::get('/import/progress/{importId}', [ImportController::class, 'progress'])->name('import.progress');

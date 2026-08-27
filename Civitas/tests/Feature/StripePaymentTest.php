@@ -168,6 +168,82 @@ class StripePaymentTest extends TestCase
 
     /*
      * ---------------------------------------------------------------------
+     * Status endpoint (backend-driven confirmation)
+     * ---------------------------------------------------------------------
+     */
+
+    public function test_status_reports_pending_without_frontend_confirmation(): void
+    {
+        $user = User::factory()->create();
+        $type = $this->makeServiceType(25.00);
+        $request = $this->makeServiceRequest($user, $type);
+        $this->makePendingPayment($request, 'pi_status_pending');
+
+        $this->actingAs($user)
+            ->getJson(route('admin.service.payments.status', ['requestId' => $request->RequestID]))
+            ->assertOk()
+            ->assertJsonPath('payment_status', 'pending')
+            ->assertJsonPath('is_finalized', false)
+            ->assertJsonPath('request_status', 'Pending');
+    }
+
+    public function test_status_reports_finalized_only_after_webhook(): void
+    {
+        $user = User::factory()->create();
+        $type = $this->makeServiceType(25.00);
+        $request = $this->makeServiceRequest($user, $type);
+        $payment = $this->makePendingPayment($request, 'pi_status_done');
+
+        $event = $this->buildWebhookEvent('payment_intent.succeeded', [
+            'id' => 'pi_status_done',
+            'currency' => 'usd',
+            'status' => 'succeeded',
+        ]);
+
+        $this->postRaw('/api/stripe/webhook', $event['payload'], [
+            'Stripe-Signature' => $event['signature'],
+        ])->assertOk();
+
+        // The frontend must only show success once the backend has finalized.
+        $this->actingAs($user)
+            ->getJson(route('admin.service.payments.status', ['requestId' => $request->RequestID]))
+            ->assertOk()
+            ->assertJsonPath('payment_status', 'succeeded')
+            ->assertJsonPath('request_status', 'Completed')
+            ->assertJsonPath('is_finalized', true)
+            ->assertJsonPath('receipt_number', Payment::find($payment->PaymentID)->ReceiptNumber);
+    }
+
+    public function test_status_is_rejected_when_not_authorized(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $type = $this->makeServiceType(25.00);
+        $request = $this->makeServiceRequest($owner, $type);
+
+        $this->actingAs($other)
+            ->getJson(route('admin.service.payments.status', ['requestId' => $request->RequestID]))
+            ->assertForbidden();
+    }
+
+    public function test_payment_page_renders_processed_state(): void
+    {
+        config(['services.stripe.key' => 'pk_test_dummy']);
+
+        $user = User::factory()->create();
+        $type = $this->makeServiceType(25.00);
+        $request = $this->makeServiceRequest($user, $type);
+        $request->update(['Status' => 'Completed']);
+        $this->makePendingPayment($request, 'pi_processed')->update(['Status' => 'succeeded']);
+
+        $this->actingAs($user)
+            ->get(route('admin.service.payments.page', ['requestId' => $request->RequestID]))
+            ->assertOk()
+            ->assertSee('already processed', false);
+    }
+
+    /*
+     * ---------------------------------------------------------------------
      * Webhook handling
      * ---------------------------------------------------------------------
      */
