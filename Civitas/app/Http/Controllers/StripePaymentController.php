@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Stripe\Exception\ApiErrorException;
+use Stripe\Exception\InvalidRequestException;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\StripeClient;
 use Stripe\Webhook;
@@ -78,11 +79,31 @@ class StripePaymentController extends Controller
             ->first();
 
         if ($existing) {
-            $intent = $this->client()->paymentIntents->retrieve($existing->StripePaymentIntentID);
+            try {
+                $intent = $this->client()->paymentIntents->retrieve($existing->StripePaymentIntentID);
 
-            if ($intent->status === 'requires_payment_method' || $intent->status === 'requires_confirmation') {
-                return $intent->client_secret;
+                if ($intent->status === 'requires_payment_method' || $intent->status === 'requires_confirmation') {
+                    return $intent->client_secret;
+                }
+
+                // The intent succeeded on Stripe but the webhook never confirmed it: reconcile locally.
+                if ($intent->status === 'succeeded' || $intent->status === 'requires_capture') {
+                    $this->reconcileSucceededIntent($existing, $intent->currency);
+
+                    throw new ApiErrorException(
+                        'This payment was already completed. Please refresh the page to see the receipt.'
+                    );
+                }
+            } catch (InvalidRequestException $e) {
+                Log::warning('Stripe: retained PaymentIntent no longer exists; creating a new one', [
+                    'intent_id' => $existing->StripePaymentIntentID,
+                    'request_id' => $serviceRequest->RequestID,
+                    'error' => $e->getMessage(),
+                ]);
             }
+
+            // The retained intent is stale or no longer usable: drop it and start fresh.
+            $existing->delete();
         }
 
         $amountMinor = (int) round((float) $serviceRequest->serviceType?->Fees * 100);
@@ -143,12 +164,25 @@ class StripePaymentController extends Controller
                 if ($intent->status === 'requires_payment_method' || $intent->status === 'requires_confirmation') {
                     return response()->json(['client_secret' => $intent->client_secret]);
                 }
+
+                // The intent succeeded on Stripe but the webhook never confirmed it: reconcile locally.
+                if ($intent->status === 'succeeded' || $intent->status === 'requires_capture') {
+                    $this->reconcileSucceededIntent($existing, $intent->currency);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This payment was already completed. Please refresh the page.',
+                    ], 409);
+                }
             } catch (ApiErrorException $e) {
                 Log::warning('Stripe: failed to retrieve existing PaymentIntent', [
                     'intent_id' => $existing->StripePaymentIntentID,
                     'error' => $e->getMessage(),
                 ]);
             }
+
+            // The retained intent is stale or no longer usable: drop it and start fresh.
+            $existing->delete();
         }
 
         $amountMinor = (int) round((float) $serviceRequest->serviceType->Fees * 100);
@@ -337,6 +371,18 @@ class StripePaymentController extends Controller
                 ?? $event->data->object->last_payment_error->code
                 ?? null,
         ]);
+    }
+
+    protected function reconcileSucceededIntent(Payment $payment, string $currency): void
+    {
+        $payment->update([
+            'Status' => 'succeeded',
+            'PaidAt' => now(),
+            'ReceiptNumber' => $payment->ReceiptNumber ?: 'RCPT-' . strtoupper(Str::random(10)),
+            'Currency' => strtoupper($currency),
+        ]);
+
+        dispatch(new \App\Jobs\FinalizeSuccessfulPayment($payment->PaymentID));
     }
 
     protected function client(): StripeClient

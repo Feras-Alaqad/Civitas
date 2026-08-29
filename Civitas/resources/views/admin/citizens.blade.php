@@ -139,12 +139,14 @@
                             <th class="py-3 px-4 text-left"><span class="font-semibold text-gray-500 text-theme-xs dark:text-gray-400 uppercase tracking-wider">Department</span></th>
                             <th class="py-3 px-4 text-left"><span class="font-semibold text-gray-500 text-theme-xs dark:text-gray-400 uppercase tracking-wider">Fees</span></th>
                             <th class="py-3 px-4 text-left"><span class="font-semibold text-gray-500 text-theme-xs dark:text-gray-400 uppercase tracking-wider">Status</span></th>
+                            <th class="py-3 px-4 text-right"><span class="font-semibold text-gray-500 text-theme-xs dark:text-gray-400 uppercase tracking-wider">Action</span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @foreach($serviceRequests as $req)
                         @php
                             $reqData = [
+                                'id' => $req->RequestID,
                                 'date' => \Carbon\Carbon::parse($req->RequestDate)->format('d M Y, h:i A'),
                                 'service' => $req->ServiceName,
                                 'department' => $req->DepartmentName ?? '—',
@@ -153,6 +155,7 @@
                                 'docs' => $req->RequiredDocuments ?? '—',
                                 'created' => $req->created_at ? \Carbon\Carbon::parse($req->created_at)->format('d M Y, h:i A') : '—',
                                 'updated' => $req->updated_at ? \Carbon\Carbon::parse($req->updated_at)->format('d M Y, h:i A') : '—',
+                                'pay_url' => $req->Status === 'Pending' ? route('admin.service.payments.page', ['requestId' => $req->RequestID]) : null,
                             ];
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" data-request='{{ json_encode($reqData) }}'>
@@ -182,6 +185,18 @@
                                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass }}">
                                     {{ $status }}
                                 </span>
+                            </td>
+                            <td class="py-3 px-4 whitespace-nowrap text-right">
+                                @if ($req->Status === 'Pending')
+                                <a href="{{ route('admin.service.payments.page', ['requestId' => $req->RequestID]) }}"
+                                   onclick="event.stopPropagation()"
+                                   class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-500 hover:text-white dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500 dark:hover:text-white">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    Continue Payment
+                                </a>
+                                @else
+                                <span class="text-gray-300 dark:text-gray-600">—</span>
+                                @endif
                             </td>
                         </tr>
                         @endforeach
@@ -235,6 +250,13 @@
             };
             const badge = statusBadge[data.status] || 'bg-gray-50 text-gray-600 dark:bg-gray-500/15 dark:text-gray-400';
 
+            const payButtonHtml = data.pay_url
+                ? `<a href="${data.pay_url}" class="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/25 hover:bg-brand-600 transition-colors">
+                       <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                       Continue Payment
+                   </a>`
+                : '';
+
             document.getElementById('requestModalBody').innerHTML = `
                 <div class="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 dark:bg-gray-700/50">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Service</span>
@@ -260,6 +282,7 @@
                     <span class="text-sm text-gray-500 dark:text-gray-400 block mb-1">Required Documents</span>
                     <span class="text-sm font-medium text-gray-800 dark:text-white/90">${data.docs}</span>
                 </div>
+                ${payButtonHtml}
                 <div class="border-t border-gray-100 dark:border-gray-700 pt-2 mt-1">
                     <div class="flex items-center justify-between rounded-lg px-4 py-2">
                         <span class="text-xs text-gray-400 dark:text-gray-500">Created</span>

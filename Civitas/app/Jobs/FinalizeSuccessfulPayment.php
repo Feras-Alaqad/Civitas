@@ -6,10 +6,12 @@ use App\Events\PaymentCompleted;
 use App\Models\AuditLog;
 use App\Models\Payment;
 use App\Models\ServiceRequest;
+use App\Services\CitizensCacheService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class FinalizeSuccessfulPayment implements ShouldQueue
@@ -35,6 +37,10 @@ class FinalizeSuccessfulPayment implements ShouldQueue
         }
 
         $serviceRequest->update(['Status' => 'Completed']);
+
+        $cacheService = app(CitizensCacheService::class);
+        Cache::forget($cacheService->buildRequestsCacheKey($serviceRequest->PersonID));
+        Cache::forget($cacheService->buildPersonCacheKey($serviceRequest->PersonID));
 
         DB::transaction(function () use ($payment, $serviceRequest) {
             AuditLog::create([

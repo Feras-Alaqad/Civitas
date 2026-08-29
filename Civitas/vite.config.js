@@ -11,6 +11,7 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/css/tailadmin.css',
                 'resources/js/tailadmin.js',
+                'resources/js/mascot-404.js',
             ],
             refresh: true,
         }),
