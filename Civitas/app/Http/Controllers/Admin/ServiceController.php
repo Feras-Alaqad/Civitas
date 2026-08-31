@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ServiceController extends Controller
@@ -27,7 +28,7 @@ class ServiceController extends Controller
             ->leftJoin('Cities', 'Cities.CityID', '=', 'Persons.CityID')
             ->leftJoin('Governorates', 'Governorates.GovernorateID', '=', 'Cities.GovernorateID')
             ->where('Persons.PersonID', $personId)
-            ->select('Persons.PersonID', 'Persons.FullName', 'Persons.NationalID', 'Governorates.GovernorateName')
+            ->select('Persons.PersonID', 'Persons.FullName', 'Persons.NationalID', 'Persons.Phone', 'Persons.Email', 'Governorates.GovernorateName')
             ->first();
 
         if (!$person) {
@@ -62,7 +63,7 @@ class ServiceController extends Controller
         $request->validate([
             'person_id' => 'required|string|exists:Persons,PersonID',
             'service_type_id' => 'required|string|exists:Service_Types,ServiceTypeID',
-            'payment_method' => 'required|in:stripe',
+            'payment_method' => 'required|in:stripe,lahza',
         ]);
 
         $personId = $request->input('person_id');
@@ -123,9 +124,15 @@ class ServiceController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Service request creation failed', [
+                'person_id' => $personId,
+                'service_type_id' => $serviceTypeId,
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create service request: ' . $e->getMessage(),
+                'message' => 'Failed to create service request. Please try again.',
             ], 500);
         }
     }

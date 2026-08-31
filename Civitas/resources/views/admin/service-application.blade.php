@@ -45,6 +45,21 @@
     .service-type-card.selected {
         animation: glowPulse 1.5s ease-in-out infinite;
     }
+    @keyframes modalIn {
+        0% { opacity: 0; transform: translateY(16px) scale(0.97); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .spinner {
+        border: 2px solid rgba(255, 255, 255, 0.25);
+        border-top-color: #fff;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
 
     .department-filter {
         display: flex;
@@ -343,9 +358,69 @@
     </div>
 </div>
 
+    {{-- Payment Method Modal --}}
+    <div id="payMethodModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePaymentMethodModal()"></div>
+
+        <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:border dark:border-gray-700 dark:bg-gray-900" style="animation: modalIn 0.3s ease-out">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white/90">Choose Payment Method</h3>
+                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Select how you would like to pay for this service request.</p>
+                </div>
+                <button type="button" onclick="closePaymentMethodModal()"
+                    class="shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="mt-5 space-y-3">
+                <button type="button" data-method="stripe" onclick="selectPaymentMethod(this)"
+                    class="pay-method-option group flex w-full items-center gap-4 rounded-xl border-2 border-gray-200 bg-white p-4 text-left transition-all duration-300 hover:border-brand-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-brand-500/50">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition-colors duration-300 group-hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-semibold text-gray-800 dark:text-white/90">Credit / Debit Card</span>
+                        <span class="block text-xs text-gray-400 dark:text-gray-500">Instant card payment via Visa / Mastercard (Stripe)</span>
+                    </span>
+                    <span class="pay-method-check flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 text-white transition-all duration-300 dark:border-gray-600">
+                        <svg class="h-3.5 w-3.5 opacity-0 transition-opacity duration-300" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                </button>
+
+                <button type="button" data-method="lahza" onclick="selectPaymentMethod(this)"
+                    class="pay-method-option group flex w-full items-center gap-4 rounded-xl border-2 border-gray-200 bg-white p-4 text-left transition-all duration-300 hover:border-brand-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-brand-500/50">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition-colors duration-300 group-hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4a4 4 0 100-8 4 4 0 000 8zm7-3a3 3 0 100-6 3 3 0 000 6zm0 3c0 1.5-1.3 2.2-2.6 2.2H11"/></svg>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-semibold text-gray-800 dark:text-white/90">Bank of Palestine (Lahza)</span>
+                        <span class="block text-xs text-gray-400 dark:text-gray-500">Local payment via Bank of Palestine</span>
+                    </span>
+                    <span class="pay-method-check flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 text-white transition-all duration-300 dark:border-gray-600">
+                        <svg class="h-3.5 w-3.5 opacity-0 transition-opacity duration-300" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                </button>
+            </div>
+
+            <p id="payMethodError" class="mt-4 hidden rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600 dark:bg-red-500/10 dark:text-red-400"></p>
+
+            <div class="mt-6">
+                <button type="button" id="payMethodConfirmBtn" onclick="confirmPaymentChoice()" disabled
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 transition-all duration-300 hover:bg-brand-600 hover:shadow-xl hover:shadow-brand-500/30 hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-500 disabled:hover:shadow-none disabled:hover:-translate-y-0">
+                    <span id="payMethodSpinner" class="spinner hidden"></span>
+                    <span id="payMethodConfirmLabel">Confirm Payment</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 <script>
 const PERSON_ID = '{{ $person->PersonID }}';
 const PERSON_NAME = '{{ addslashes($person->FullName) }}';
+const PERSON_EMAIL = '{{ addslashes($person->Email ?? '') }}';
+const PERSON_PHONE = '{{ addslashes($person->Phone ?? '') }}';
 const CSRF_TOKEN = '{{ csrf_token() }}';
 
 let selectedService = null;
@@ -521,10 +596,16 @@ function removeFile(index) {
     if (uploadedFiles.length === 0) clearFileError();
 }
 
-let stripe = null;
-let stripeElements = null;
-let stripePaymentElement = null;
-let stripeFlowLocked = false;
+let paymentChoice = null;
+let paymentFlowLocked = false;
+
+const METHOD_SELECTED_CLASSES = [
+    'border-brand-500', 'bg-brand-50', 'shadow-lg', 'shadow-brand-500/10',
+    'dark:border-brand-400/60', 'dark:bg-brand-500/10',
+];
+const CHECK_SELECTED_CLASSES = [
+    'border-brand-500', 'bg-brand-500', 'dark:border-brand-400', 'dark:bg-brand-400',
+];
 
 function proceedToPayment() {
     if (!selectedService) {
@@ -541,25 +622,88 @@ function proceedToPayment() {
         return;
     }
 
-    if (stripeFlowLocked) return;
+    openPaymentMethodModal();
+}
 
-    stripeFlowLocked = true;
+function openPaymentMethodModal() {
+    resetPaymentMethodSelection();
+    hidePaymentMethodError();
+    document.getElementById('payMethodModal').classList.remove('hidden');
+    document.getElementById('payMethodModal').classList.add('flex');
+    document.body.classList.add('overflow-hidden');
+}
 
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
-    submitBtn.innerHTML = 'Redirecting to secure checkoutâ€¦';
+function closePaymentMethodModal() {
+    document.getElementById('payMethodModal').classList.add('hidden');
+    document.getElementById('payMethodModal').classList.remove('flex');
+    document.body.classList.remove('overflow-hidden');
+}
 
+function resetPaymentMethodSelection() {
+    paymentChoice = null;
+    document.getElementById('payMethodConfirmBtn').disabled = true;
+    document.getElementById('payMethodConfirmLabel').textContent = 'Confirm Payment';
+    document.getElementById('payMethodSpinner').classList.add('hidden');
+
+    document.querySelectorAll('.pay-method-option').forEach(option => {
+        option.classList.remove(...METHOD_SELECTED_CLASSES);
+        const check = option.querySelector('.pay-method-check');
+        if (check) {
+            check.classList.remove(...CHECK_SELECTED_CLASSES);
+            const icon = check.querySelector('svg');
+            if (icon) icon.classList.add('opacity-0');
+        }
+    });
+}
+
+function selectPaymentMethod(option) {
+    document.querySelectorAll('.pay-method-option').forEach(opt => {
+        opt.classList.remove(...METHOD_SELECTED_CLASSES);
+        const check = opt.querySelector('.pay-method-check');
+        if (check) {
+            check.classList.remove(...CHECK_SELECTED_CLASSES);
+            const icon = check.querySelector('svg');
+            if (icon) icon.classList.add('opacity-0');
+        }
+    });
+
+    option.classList.add(...METHOD_SELECTED_CLASSES);
+    const check = option.querySelector('.pay-method-check');
+    if (check) {
+        check.classList.add(...CHECK_SELECTED_CLASSES);
+        const icon = check.querySelector('svg');
+        if (icon) icon.classList.remove('opacity-0');
+    }
+
+    paymentChoice = option.dataset.method;
+    document.getElementById('payMethodConfirmBtn').disabled = false;
+    hidePaymentMethodError();
+}
+
+function confirmPaymentChoice() {
+    if (!paymentChoice || paymentFlowLocked) return;
+
+    paymentFlowLocked = true;
+    hidePaymentMethodError();
+
+    if (paymentChoice === 'stripe') {
+        startStripePayment();
+    } else if (paymentChoice === 'lahza') {
+        startLahzaPayment();
+    }
+}
+
+function createServiceRequest(paymentMethod) {
     const formData = new FormData();
     formData.append('person_id', PERSON_ID);
     formData.append('service_type_id', selectedService.id);
-    formData.append('payment_method', 'stripe');
+    formData.append('payment_method', paymentMethod);
 
     uploadedFiles.forEach(file => {
         formData.append('documents[]', file);
     });
 
-    fetch('{{ route("admin.service.store") }}', {
+    return fetch('{{ route("admin.service.store") }}', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': CSRF_TOKEN,
@@ -570,20 +714,76 @@ function proceedToPayment() {
     .then(res => res.json())
     .then(data => {
         if (!data.success) throw new Error(data.message || 'Failed to create service request');
-        window.location.href = '{{ route("admin.service.payments.page", ['requestId' => '__REQUEST_ID__']) }}'.replace('__REQUEST_ID__', data.request_id);
-    })
-    .catch(err => {
-        console.error('Error:', err);
-        alert(err.message || 'Unable to start the payment process.');
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
-        submitBtn.innerHTML = `
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-            </svg>
-            Proceed to Payment`;
-        stripeFlowLocked = false;
+        return data.request_id;
     });
+}
+
+async function startStripePayment() {
+    setPaymentMethodBusy(true);
+    document.getElementById('payMethodConfirmLabel').textContent = 'Redirecting to secure checkout\u2026';
+
+    try {
+        const requestId = await createServiceRequest('stripe');
+        window.location.href = '{{ route("admin.service.payments.page", ['requestId' => '__REQUEST_ID__']) }}'.replace('__REQUEST_ID__', requestId);
+    } catch (err) {
+        console.error('Error:', err);
+        showPaymentMethodError(err.message || 'Unable to start the payment process.');
+        setPaymentMethodBusy(false);
+        paymentFlowLocked = false;
+    }
+}
+
+async function startLahzaPayment() {
+    setPaymentMethodBusy(true);
+    document.getElementById('payMethodConfirmLabel').textContent = 'Contacting Lahza\u2026';
+
+    try {
+        const requestId = await createServiceRequest('lahza');
+
+        const res = await fetch('{{ route("payment.lahza.initialize") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                request_id: requestId,
+                email: PERSON_EMAIL || undefined,
+                mobile: PERSON_PHONE || undefined,
+            }),
+        });
+
+        const data = await res.json();
+
+        if (!data.success || !data.authorization_url) {
+            throw new Error(data.message || 'Unable to start the payment process.');
+        }
+
+        window.location.href = data.authorization_url;
+    } catch (err) {
+        console.error('Error:', err);
+        showPaymentMethodError(err.message || 'Unable to start the payment process.');
+        setPaymentMethodBusy(false);
+        paymentFlowLocked = false;
+    }
+}
+
+function setPaymentMethodBusy(busy) {
+    document.getElementById('payMethodConfirmBtn').disabled = busy;
+    document.getElementById('payMethodSpinner').classList.toggle('hidden', !busy);
+}
+
+function showPaymentMethodError(message) {
+    const el = document.getElementById('payMethodError');
+    el.textContent = message;
+    el.classList.remove('hidden');
+}
+
+function hidePaymentMethodError() {
+    const el = document.getElementById('payMethodError');
+    el.classList.add('hidden');
+    el.textContent = '';
 }
 </script>
 @endsection

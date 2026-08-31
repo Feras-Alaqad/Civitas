@@ -46,7 +46,7 @@ class FinalizeSuccessfulPayment implements ShouldQueue
             AuditLog::create([
                 'UserID' => $serviceRequest->UserID,
                 'ActionType' => 'Payment Completed',
-                'Description' => "Payment of {$payment->Amount} {$payment->Currency} completed via Stripe for {$payment->RequestID}",
+                'Description' => "Payment of {$payment->Amount} {$payment->Currency} completed via {$payment->gatewayName()} for {$payment->RequestID}",
                 'ReferenceID' => $serviceRequest->RequestID,
                 'Timestamp' => now(),
                 'IPAddress' => null,

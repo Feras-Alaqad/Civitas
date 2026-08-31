@@ -20,6 +20,7 @@ class Payment extends Model
         'PaymentDate',
         'ReceiptNumber',
         'StripePaymentIntentID',
+        'LahzaReference',
         'Currency',
         'Status',
         'Metadata',
@@ -40,5 +41,22 @@ class Payment extends Model
     public function serviceRequest()
     {
         return $this->belongsTo(ServiceRequest::class, 'RequestID', 'RequestID');
+    }
+
+    /**
+     * Human-readable payment gateway name derived from the stored reference.
+     * Never trusts the client; it is inferred from which gateway populated the row.
+     */
+    public function gatewayName(): string
+    {
+        if ($this->StripePaymentIntentID) {
+            return 'Stripe';
+        }
+
+        if ($this->LahzaReference) {
+            return 'Lahza';
+        }
+
+        return 'Unknown';
     }
 }

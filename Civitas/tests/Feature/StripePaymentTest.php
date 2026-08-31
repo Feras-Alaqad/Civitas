@@ -8,6 +8,7 @@ use App\Models\ServiceType;
 use App\Models\StripeWebhookEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Stripe\PaymentIntent;
 use Stripe\StripeClient;
@@ -36,10 +37,32 @@ class StripePaymentTest extends TestCase
         ]);
     }
 
+    protected function makePerson(string $personId = 'aaaaaaaa-0000-0000-0000-000000000001'): string
+    {
+        DB::table('Persons')->insertOrIgnore([
+            'PersonID' => $personId,
+            'FullName' => 'Test Person',
+            'DateOfBirth' => null,
+            'NationalID' => null,
+            'Address' => null,
+            'Gender' => 'M',
+            'NationalityID' => null,
+            'CityID' => null,
+            'Phone' => '0599000000',
+            'Email' => 'testperson@example.com',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $personId;
+    }
+
     protected function makeServiceRequest(User $user, ServiceType $type): ServiceRequest
     {
+        $personId = $this->makePerson(Str::uuid()->toString());
+
         return ServiceRequest::create([
-            'PersonID' => null,
+            'PersonID' => $personId,
             'UserID' => $user->id,
             'ServiceTypeID' => $type->ServiceTypeID,
             'RequestDate' => now(),
@@ -198,6 +221,8 @@ class StripePaymentTest extends TestCase
             'id' => 'pi_status_done',
             'currency' => 'usd',
             'status' => 'succeeded',
+            'amount' => 2500,
+            'amount_received' => 2500,
         ]);
 
         $this->postRaw('/api/stripe/webhook', $event['payload'], [
@@ -272,6 +297,8 @@ class StripePaymentTest extends TestCase
             'id' => 'pi_test_123',
             'currency' => 'usd',
             'status' => 'succeeded',
+            'amount' => 2500,
+            'amount_received' => 2500,
         ]);
 
         $this->postRaw('/api/stripe/webhook', $event['payload'], [
@@ -317,6 +344,33 @@ class StripePaymentTest extends TestCase
             'StripePaymentIntentID' => 'pi_test_456',
             'Status' => 'failed',
             'FailureReason' => 'Your card was declined.',
+        ]);
+    }
+
+    public function test_webhook_does_not_finalize_on_amount_mismatch(): void
+    {
+        $user = User::factory()->create();
+        $type = $this->makeServiceType(25.00);
+        $request = $this->makeServiceRequest($user, $type);
+        $this->makePendingPayment($request, 'pi_mismatch');
+
+        // Event claims only 10.00 was charged, but the stored amount is 25.00.
+        $event = $this->buildWebhookEvent('payment_intent.succeeded', [
+            'id' => 'pi_mismatch',
+            'currency' => 'usd',
+            'status' => 'succeeded',
+            'amount' => 1000,
+            'amount_received' => 1000,
+        ]);
+
+        $this->postRaw('/api/stripe/webhook', $event['payload'], [
+            'Stripe-Signature' => $event['signature'],
+        ])->assertOk();
+
+        // A mismatched amount must never finalize the payment.
+        $this->assertDatabaseHas('Payments', [
+            'StripePaymentIntentID' => 'pi_mismatch',
+            'Status' => 'pending',
         ]);
     }
 

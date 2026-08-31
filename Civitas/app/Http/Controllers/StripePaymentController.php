@@ -343,6 +343,24 @@ class StripePaymentController extends Controller
             return;
         }
 
+        // Defensive: verify the amount actually charged matches what we expected
+        // for this request. Prevents any mismatch from being silently marked paid.
+        $expectedMinor = (int) round((float) $payment->Amount * 100);
+        $chargedMinor = (int) ($intent->amount_received ?? $intent->amount ?? 0);
+        $chargedCurrency = strtoupper((string) ($intent->currency ?? $payment->Currency));
+
+        if ($chargedMinor !== $expectedMinor || $chargedCurrency !== strtoupper((string) $payment->Currency)) {
+            Log::error('Stripe: success webhook amount/currency mismatch', [
+                'intent_id' => $intent->id,
+                'expected_minor' => $expectedMinor,
+                'charged_minor' => $chargedMinor,
+                'expected_currency' => $payment->Currency,
+                'charged_currency' => $chargedCurrency,
+            ]);
+
+            return;
+        }
+
         $payment->update([
             'Status' => 'succeeded',
             'PaidAt' => now(),
