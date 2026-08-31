@@ -56,6 +56,15 @@ Route::post('/payment/lahza/initialize', [LahzaPaymentController::class, 'create
     ->middleware(['auth', 'throttle:20,1'])
     ->name('payment.lahza.initialize');
 
+// Resume a pending payment with the gateway it originally used.
+Route::get('/payment/lahza/page/{requestId}', [LahzaPaymentController::class, 'resumePage'])
+    ->middleware('auth')
+    ->name('payment.lahza.page');
+
+Route::post('/payment/lahza/continue', [LahzaPaymentController::class, 'continuePayment'])
+    ->middleware(['auth', 'throttle:20,1'])
+    ->name('payment.lahza.continue');
+
 // Lahza redirects the customer back here after the payment attempt (public)
 Route::get('/payment/lahza/callback', [LahzaPaymentController::class, 'verifyCallback'])
     ->name('payment.lahza.callback');

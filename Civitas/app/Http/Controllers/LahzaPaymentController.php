@@ -117,6 +117,153 @@ class LahzaPaymentController extends Controller
     }
 
     /**
+     * Resolve the payment gateway that a pending service request started with:
+     * Stripe if it has a StripePaymentIntentID, Lahza if it has a LahzaReference.
+     */
+    public static function gatewayFor(ServiceRequest $serviceRequest): ?string
+    {
+        $payment = Payment::where('RequestID', $serviceRequest->RequestID)
+            ->where('Status', 'pending')
+            ->first();
+
+        if (! $payment) {
+            return null;
+        }
+
+        if ($payment->StripePaymentIntentID) {
+            return 'stripe';
+        }
+
+        if ($payment->LahzaReference) {
+            return 'lahza';
+        }
+
+        return null;
+    }
+
+    /**
+     * Show a confirmation page before resuming a pending Lahza payment.
+     *
+     * The actual initialization/redirect is only performed via the POST
+     * endpoint (`continuePayment`) so that no state changes happen on GET.
+     */
+    public function resumePage(string $requestId)
+    {
+        $serviceRequest = ServiceRequest::with('serviceType', 'person')->findOrFail($requestId);
+
+        if ($serviceRequest->UserID !== Auth::id()) {
+            abort(403, 'You are not authorized to pay for this service request.');
+        }
+
+        // If the request was not started via Lahza, route to the right page.
+        if (self::gatewayFor($serviceRequest) !== 'lahza') {
+            return redirect()->route('admin.service.payments.page', ['requestId' => $serviceRequest->RequestID]);
+        }
+
+        return view('admin.continue-lahza', [
+            'serviceRequest' => $serviceRequest,
+            'person' => $serviceRequest->person,
+            'serviceType' => $serviceRequest->serviceType,
+            'amount' => (float) $serviceRequest->serviceType?->Fees,
+        ]);
+    }
+
+    /**
+     * Continue a pending Lahza payment from the same page (without re-choosing
+     * the gateway). The request must have started via Lahza; a request that was
+     * started via Stripe must NOT be completed through Lahza.
+     *
+     * The amount is always recomputed server-side from the service fees.
+     */
+    public function continuePayment(Request $request)
+    {
+        $request->validate([
+            'request_id' => 'required|string|exists:Service_Requests,RequestID',
+        ]);
+
+        $serviceRequest = ServiceRequest::with('serviceType', 'person')->findOrFail($request->input('request_id'));
+
+        if ($serviceRequest->UserID !== Auth::id()) {
+            abort(403, 'You are not authorized to pay for this service request.');
+        }
+
+        // Only pending requests that already started on Lahza can be continued here.
+        $gateway = self::gatewayFor($serviceRequest);
+
+        if ($gateway !== 'lahza') {
+            $url = $gateway === 'stripe'
+                ? route('admin.service.payments.page', ['requestId' => $serviceRequest->RequestID])
+                : route('admin.service.payments.page', ['requestId' => $serviceRequest->RequestID]);
+
+            return redirect($url);
+        }
+
+        // A pending Lahza checkout is single-use. Drop the stale pending attempt.
+        $existing = Payment::where('RequestID', $serviceRequest->RequestID)
+            ->where('Status', 'pending')
+            ->whereNotNull('LahzaReference')
+            ->first();
+
+        if ($existing) {
+            $existing->delete();
+        }
+
+        $amountMinor = (int) round((float) $serviceRequest->serviceType->Fees * 100);
+        $currency = strtoupper(config('lahza.default_currency', 'ILS'));
+
+        $email = Auth::user()?->email ?: (string) Str::lower(Str::random(12)).'@civitas.local';
+        $mobile = $serviceRequest->person?->Phone;
+        $reference = (string) Str::uuid();
+
+        try {
+            $response = $this->initializeTransaction([
+                'email' => $email,
+                'mobile' => $mobile,
+                'amount' => $amountMinor,
+                'currency' => $currency,
+                'reference' => $reference,
+                'callback_url' => config('lahza.callback_url'),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Lahza: continue payment initialization failed', [
+                'request_id' => $serviceRequest->RequestID,
+                'reference' => $reference,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('admin.service.payments.page', ['requestId' => $serviceRequest->RequestID])
+                ->with('error', 'We could not resume your payment. Please try again.');
+        }
+
+        $authorizationUrl = data_get($response, 'data.authorization_url');
+        $confirmedReference = (string) (data_get($response, 'data.reference', $reference));
+
+        if (! $authorizationUrl) {
+            Log::error('Lahza: continue payment initialized without an authorization URL', [
+                'request_id' => $serviceRequest->RequestID,
+                'reference' => $reference,
+            ]);
+
+            return redirect()
+                ->route('admin.service.payments.page', ['requestId' => $serviceRequest->RequestID])
+                ->with('error', 'We could not resume your payment. Please try again.');
+        }
+
+        Payment::create([
+            'RequestID' => $serviceRequest->RequestID,
+            'Amount' => $serviceRequest->serviceType->Fees,
+            'PaymentDate' => now(),
+            'ReceiptNumber' => null,
+            'LahzaReference' => $confirmedReference,
+            'Currency' => $currency,
+            'Status' => 'pending',
+        ]);
+
+        return redirect()->away($authorizationUrl);
+    }
+
+    /**
      * Verify a transaction after Lahza redirects the customer back to the
      * callback URL. Success is only trusted when the Lahza verify endpoint
      * reports `data.status === 'success'`.

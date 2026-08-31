@@ -145,6 +145,20 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @foreach($serviceRequests as $req)
                         @php
+                            $gateway = !empty($req->LahzaReference) ? 'lahza'
+                                : (!empty($req->StripePaymentIntentID) ? 'stripe' : null);
+
+                            $payUrl = null;
+                            if ($req->Status === 'Pending') {
+                                if ($gateway === 'lahza') {
+                                    $payUrl = route('payment.lahza.page', ['requestId' => $req->RequestID]);
+                                } else {
+                                    $payUrl = route('admin.service.payments.page', ['requestId' => $req->RequestID]);
+                                }
+                            }
+
+                            $payLabel = $gateway === 'lahza' ? 'Continue with Lahza' : 'Continue Payment';
+
                             $reqData = [
                                 'id' => $req->RequestID,
                                 'date' => \Carbon\Carbon::parse($req->RequestDate)->format('d M Y, h:i A'),
@@ -155,7 +169,8 @@
                                 'docs' => $req->RequiredDocuments ?? '—',
                                 'created' => $req->created_at ? \Carbon\Carbon::parse($req->created_at)->format('d M Y, h:i A') : '—',
                                 'updated' => $req->updated_at ? \Carbon\Carbon::parse($req->updated_at)->format('d M Y, h:i A') : '—',
-                                'pay_url' => $req->Status === 'Pending' ? route('admin.service.payments.page', ['requestId' => $req->RequestID]) : null,
+                                'pay_url' => $payUrl,
+                                'pay_method' => $gateway,
                             ];
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" data-request='{{ json_encode($reqData) }}'>
@@ -188,11 +203,11 @@
                             </td>
                             <td class="py-3 px-4 whitespace-nowrap text-right">
                                 @if ($req->Status === 'Pending')
-                                <a href="{{ route('admin.service.payments.page', ['requestId' => $req->RequestID]) }}"
+                                <a href="{{ $payUrl }}"
                                    onclick="event.stopPropagation()"
                                    class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-500 hover:text-white dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500 dark:hover:text-white">
                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                    Continue Payment
+                                    {{ $payLabel }}
                                 </a>
                                 @else
                                 <span class="text-gray-300 dark:text-gray-600">—</span>
@@ -253,7 +268,7 @@
             const payButtonHtml = data.pay_url
                 ? `<a href="${data.pay_url}" class="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/25 hover:bg-brand-600 transition-colors">
                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                       Continue Payment
+                       ${data.pay_method === 'lahza' ? 'Continue with Lahza' : 'Continue Payment'}
                    </a>`
                 : '';
 

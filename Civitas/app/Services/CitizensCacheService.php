@@ -334,12 +334,17 @@ class CitizensCacheService
             $rows = DB::table('Service_Requests')
                 ->join('Service_Types', 'Service_Types.ServiceTypeID', '=', 'Service_Requests.ServiceTypeID')
                 ->leftJoin('Departments', 'Departments.DepartmentID', '=', 'Service_Types.DepartmentID')
+                ->leftJoin('Payments', function ($join) {
+                    $join->on('Payments.RequestID', '=', 'Service_Requests.RequestID')
+                        ->where('Payments.Status', 'pending');
+                })
                 ->where('Service_Requests.PersonID', $personId)
                 ->select(
                     'Service_Requests.RequestID', 'Service_Requests.RequestDate',
                     'Service_Requests.Status', 'Service_Requests.created_at', 'Service_Requests.updated_at',
                     'Service_Types.ServiceName', 'Service_Types.Fees', 'Service_Types.RequiredDocuments',
                     'Departments.DepartmentName',
+                    'Payments.StripePaymentIntentID', 'Payments.LahzaReference',
                 )
                 ->orderByDesc('Service_Requests.RequestDate')
                 ->get();

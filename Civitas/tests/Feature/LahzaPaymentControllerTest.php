@@ -452,4 +452,80 @@ class LahzaPaymentControllerTest extends TestCase
             'Status' => 'pending',
         ]);
     }
+
+    /*
+     * ---------------------------------------------------------------------
+     * Continue payment (resume with the correct gateway)
+     * ---------------------------------------------------------------------
+     */
+
+    public function test_resume_page_shows_confirmation_for_lahza_pending_payment(): void
+    {
+        $user = User::factory()->create();
+        $type = $this->makeServiceType(25.00);
+        $request = $this->makeServiceRequest($user, $type);
+        $this->makePendingPayment($request, 'lahza_resume');
+
+        $this->actingAs($user)
+            ->get(route('payment.lahza.page', ['requestId' => $request->RequestID]))
+            ->assertOk()
+            ->assertSee('Continue with Lahza')
+            ->assertSee('25.00');
+    }
+
+    public function test_resume_page_for_stripe_payment_redirects_to_stripe_page(): void
+    {
+        $user = User::factory()->create();
+        $type = $this->makeServiceType(25.00);
+        $request = $this->makeServiceRequest($user, $type);
+
+        // This payment was started via Stripe.
+        Payment::create([
+            'RequestID' => $request->RequestID,
+            'Amount' => 25.00,
+            'PaymentDate' => now(),
+            'StripePaymentIntentID' => 'pi_resume_stripe',
+            'Currency' => 'USD',
+            'Status' => 'pending',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('payment.lahza.page', ['requestId' => $request->RequestID]))
+            ->assertRedirect(route('admin.service.payments.page', ['requestId' => $request->RequestID]));
+    }
+
+    public function test_resume_page_is_rejected_when_not_authorized(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $type = $this->makeServiceType(25.00);
+        $request = $this->makeServiceRequest($owner, $type);
+        $this->makePendingPayment($request, 'lahza_resume_auth');
+
+        $this->actingAs($other)
+            ->get(route('payment.lahza.page', ['requestId' => $request->RequestID]))
+            ->assertForbidden();
+    }
+
+    public function test_continue_payment_redirects_to_lahza_authorization_url(): void
+    {
+        $user = User::factory()->create();
+        $type = $this->makeServiceType(25.00);
+        $request = $this->makeServiceRequest($user, $type);
+        $this->makePendingPayment($request, 'lahza_resume_cont');
+
+        $this->fakeInitializeSuccess('lahza_resume_cont');
+
+        $this->actingAs($user)
+            ->post(route('payment.lahza.continue'), ['request_id' => $request->RequestID])
+            ->assertRedirect('https://checkout.lahza.io/dummy_checkout');
+
+        // A fresh Lahza payment row was created for the resumed attempt.
+        $this->assertDatabaseHas('Payments', [
+            'RequestID' => $request->RequestID,
+            'LahzaReference' => 'lahza_resume_cont',
+            'Status' => 'pending',
+        ]);
+        $this->assertSame(25.00, (float) Payment::where('RequestID', $request->RequestID)->first()->Amount);
+    }
 }
