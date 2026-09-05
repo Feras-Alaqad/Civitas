@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Http\Controllers\Admin\DashboardController;
-use App\Models\Person;
 use App\Services\CitizensCacheService;
+use App\Services\PersonCsvMapper;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -13,7 +13,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Throwable;
 
 class ImportPersonsCsvJob implements ShouldQueue
@@ -30,11 +29,7 @@ class ImportPersonsCsvJob implements ShouldQueue
 
     private const PROGRESS_TTL = 172800;
 
-    private array $cityIds = [];
-
-    private array $governorateIds = [];
-
-    private array $nationalityIds = [];
+    private ?PersonCsvMapper $mapper = null;
 
     public function __construct(
         public string $importId,
@@ -64,18 +59,15 @@ class ImportPersonsCsvJob implements ShouldQueue
             return;
         }
 
-        $headers = fgetcsv($handle, 0, ',', '"', '');
+        $this->mapper ??= new PersonCsvMapper();
+
+        $headers = $this->mapper->readHeaders($handle);
 
         if (!$headers) {
             fclose($handle);
             $this->failImport('Could not read CSV headers.');
             return;
         }
-
-        $headers = array_map(
-            fn ($header) => trim(preg_replace('/^\xEF\xBB\xBF/', '', $header)),
-            $headers
-        );
 
         $fileSize = filesize($storagePath) ?: 0;
 
@@ -86,8 +78,6 @@ class ImportPersonsCsvJob implements ShouldQueue
         if ($startOffset > 0) {
             fseek($handle, $startOffset);
         }
-
-        $this->loadLookupIds();
 
         $batch = [];
         $processedInChunk = 0;
@@ -107,7 +97,7 @@ class ImportPersonsCsvJob implements ShouldQueue
                 continue;
             }
 
-            $batch[] = $this->buildRow(array_combine($headers, $parsed));
+            $batch[] = $this->mapper->buildRow(array_combine($headers, $parsed));
             $processedInChunk++;
 
             if (count($batch) >= self::INSERT_BATCH) {
@@ -145,49 +135,6 @@ class ImportPersonsCsvJob implements ShouldQueue
     public function failed(Throwable $exception): void
     {
         $this->failImport('Import failed: ' . $exception->getMessage());
-    }
-
-    private function buildRow(array $record): array
-    {
-        $fullName = trim(
-            ($record['FirstName'] ?? '') . ' ' .
-            ($record['FatherName'] ?? '') . ' ' .
-            ($record['MotherName'] ?? '') . ' ' .
-            ($record['FamilyName'] ?? '')
-        );
-
-        if ($fullName === '') {
-            $fullName = trim((string) ($record['FullName'] ?? ''));
-        }
-
-        return [
-            'PersonID'       => (string) Str::uuid(),
-            'FullName'       => $fullName,
-            'FullNameSearch' => Person::normalizeName($fullName),
-            'CityID'         => $this->randomId($this->cityIds),
-            'GovernorateID'  => $this->randomId($this->governorateIds),
-            'NationalityID'  => $this->randomId($this->nationalityIds),
-            'Phone'          => $record['PhoneNumber'] ?? null,
-            'Email'          => $record['Email'] ?? null,
-            'DateOfBirth'    => null,
-            'NationalID'     => ($record['ID'] ?? '') !== '' ? $record['ID'] : null,
-            'Address'        => null,
-            'Gender'         => null,
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ];
-    }
-
-    private function loadLookupIds(): void
-    {
-        $this->cityIds = DB::table('Cities')->pluck('CityID')->toArray();
-        $this->governorateIds = DB::table('Governorates')->pluck('GovernorateID')->toArray();
-        $this->nationalityIds = DB::table('Nationalities')->pluck('NationalityID')->toArray();
-    }
-
-    private function randomId(array $ids): ?string
-    {
-        return $ids ? (string) $ids[array_rand($ids)] : null;
     }
 
     private function countDataLines(string $path): int

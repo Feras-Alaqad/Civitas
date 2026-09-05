@@ -3,17 +3,15 @@
 namespace App\Services;
 
 use App\Http\Controllers\Admin\DashboardController;
-use App\Models\Person;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 class DatabaseCsvImporter
 {
-    private const CHUNK_SIZE = 500;
+    private const CHUNK_SIZE = 1000;
     private const MAX_RECORDS = 4000000;
 
     private const IMPORT_INDEXES = [
@@ -37,74 +35,142 @@ class DatabaseCsvImporter
         ],
     ];
 
-    private array $cityIds = [];
-    private array $governorateIds = [];
-    private array $nationalityIds = [];
+    private PersonCsvMapper $mapper;
+
+    public function __construct(?PersonCsvMapper $mapper = null)
+    {
+        $this->mapper = $mapper ?? new PersonCsvMapper();
+    }
 
     public function import(string $path, ?callable $onProgress = null, ?int $limit = null): int
     {
-        if (!file_exists($path)) {
-            throw new RuntimeException("CSV file not found: {$path}");
+        return $this->importFiles([$path], $onProgress, $limit);
+    }
+
+    public function importFiles(array $paths, ?callable $onProgress = null, ?int $limit = null): int
+    {
+        $paths = array_values(array_filter($paths));
+
+        if (empty($paths)) {
+            throw new RuntimeException('No CSV files provided.');
+        }
+
+        foreach ($paths as $path) {
+            if (!file_exists($path)) {
+                throw new RuntimeException("CSV file not found: {$path}");
+            }
         }
 
         $limit = min($limit ?? self::MAX_RECORDS, self::MAX_RECORDS);
+        $total = min($this->countDataLinesAcross($paths), $limit);
 
-        $this->loadRandomIds();
+        $this->mapper->refreshLookups();
+
+        $processed = 0;
 
         try {
             $this->dropForeignKeys();
             $this->dropSecondaryIndexes();
 
-            $handle = fopen($path, 'r');
-            $headers = $this->readHeaders($handle);
+            foreach ($paths as $fileIndex => $path) {
+                $handle = fopen($path, 'r');
 
-            if (!$headers) {
-                fclose($handle);
-                throw new RuntimeException("Could not read CSV headers from: {$path}");
-            }
-
-            $total = min($this->countDataLines($path), $limit);
-            $batch = [];
-            $processed = 0;
-
-            while (($line = fgetcsv($handle, 0, ',', '"', '')) !== false) {
-                if ($processed >= $limit) {
-                    break;
+                if (!$handle) {
+                    throw new RuntimeException("Could not open CSV file for reading: {$path}");
                 }
 
-                if (count($line) !== count($headers)) {
-                    continue;
+                $headers = $this->mapper->readHeaders($handle);
+
+                if (!$headers) {
+                    fclose($handle);
+                    throw new RuntimeException("Could not read CSV headers from: {$path}");
                 }
 
-                $batch[] = $this->buildRow(array_combine($headers, $line));
-                $processed++;
+                $batch = [];
 
-                if (count($batch) >= self::CHUNK_SIZE) {
-                    DB::table('Persons')->insertOrIgnore($batch);
-                    $batch = [];
+                while (($line = fgetcsv($handle, 0, ',', '"', '')) !== false) {
+                    if ($processed >= $limit) {
+                        break;
+                    }
 
-                    if ($onProgress) {
-                        $onProgress($processed, $total);
+                    if (count($line) !== count($headers)) {
+                        continue;
+                    }
+
+                    $batch[] = $this->mapper->buildRow(array_combine($headers, $line));
+                    $processed++;
+
+                    if (count($batch) >= self::CHUNK_SIZE) {
+                        DB::transaction(fn () => DB::table('Persons')->insertOrIgnore($batch));
+                        $batch = [];
+
+                        $this->reportProgress($onProgress, $processed, $total, $fileIndex, count($paths), $path);
                     }
                 }
+
+                if (!empty($batch)) {
+                    DB::transaction(fn () => DB::table('Persons')->insertOrIgnore($batch));
+                }
+
+                fclose($handle);
+
+                $this->reportProgress($onProgress, $processed, $total, $fileIndex, count($paths), $path);
             }
-
-            if (!empty($batch)) {
-                DB::table('Persons')->insertOrIgnore($batch);
-            }
-
-            fclose($handle);
-
-            if ($onProgress) {
-                $onProgress($processed, $total);
-            }
-
-            $this->clearCaches();
-
-            return $processed;
         } finally {
             $this->recreateIndexes();
             $this->recreateForeignKeys();
+        }
+
+        $this->clearCaches();
+
+        return $processed;
+    }
+
+    public function countDataLines(string $path): int
+    {
+        $count = 0;
+        $handle = fopen($path, 'r');
+
+        if (!$handle) {
+            return 0;
+        }
+
+        while (($line = fgets($handle)) !== false) {
+            if (trim($line) !== '') {
+                $count++;
+            }
+        }
+
+        fclose($handle);
+
+        return max(0, $count - 1);
+    }
+
+    public function truncatePersons(): void
+    {
+        DB::table('Service_Requests')->update(['PersonID' => null]);
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        DB::table('Persons')->truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        $this->clearCaches();
+    }
+
+    private function countDataLinesAcross(array $paths): int
+    {
+        $total = 0;
+
+        foreach ($paths as $path) {
+            $total += $this->countDataLines($path);
+        }
+
+        return $total;
+    }
+
+    private function reportProgress(?callable $onProgress, int $processed, int $total, int $fileIndex, int $fileCount, string $path): void
+    {
+        if ($onProgress) {
+            $onProgress($processed, $total, $fileIndex, $fileCount, $path);
         }
     }
 
@@ -179,84 +245,6 @@ class DatabaseCsvImporter
                 }
             });
         }
-    }
-
-    public function countDataLines(string $path): int
-    {
-        $count = 0;
-        $handle = fopen($path, 'r');
-
-        if (!$handle) {
-            return 0;
-        }
-
-        while (($line = fgets($handle)) !== false) {
-            if (trim($line) !== '') {
-                $count++;
-            }
-        }
-
-        fclose($handle);
-
-        return max(0, $count - 1);
-    }
-
-    public function truncatePersons(): void
-    {
-        DB::table('Service_Requests')->update(['PersonID' => null]);
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
-        DB::table('Persons')->truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
-
-        $this->clearCaches();
-    }
-
-    private function loadRandomIds(): void
-    {
-        $this->cityIds = DB::table('Cities')->pluck('CityID')->toArray();
-        $this->governorateIds = DB::table('Governorates')->pluck('GovernorateID')->toArray();
-        $this->nationalityIds = DB::table('Nationalities')->pluck('NationalityID')->toArray();
-    }
-
-    private function readHeaders($handle): ?array
-    {
-        $headers = fgetcsv($handle, 0, ',', '"', '');
-
-        if (!$headers) {
-            return null;
-        }
-
-        return array_map(
-            fn ($header) => trim(preg_replace('/^\xEF\xBB\xBF/', '', $header)),
-            $headers
-        );
-    }
-
-    private function buildRow(array $record): array
-    {
-        $fullName = trim(implode(' ', [
-            $record['FirstName'] ?? '',
-            $record['FatherName'] ?? '',
-            $record['MotherName'] ?? '',
-            $record['FamilyName'] ?? '',
-        ]));
-
-        return [
-            'PersonID'       => (string) Str::uuid(),
-            'FullName'       => $fullName ?: '',
-            'FullNameSearch' => Person::normalizeName($fullName),
-            'DateOfBirth'    => null,
-            'NationalID'     => ($record['ID'] ?? '') !== '' ? $record['ID'] : null,
-            'Address'        => null,
-            'Gender'         => null,
-            'NationalityID'  => $this->nationalityIds ? $this->nationalityIds[array_rand($this->nationalityIds)] : null,
-            'CityID'         => $this->cityIds ? $this->cityIds[array_rand($this->cityIds)] : null,
-            'GovernorateID'  => $this->governorateIds ? $this->governorateIds[array_rand($this->governorateIds)] : null,
-            'Phone'          => $record['PhoneNumber'] ?? null,
-            'Email'          => $record['Email'] ?? null,
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ];
     }
 
     private function clearCaches(): void

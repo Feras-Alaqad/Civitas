@@ -149,7 +149,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_create_intent_returns_authorization_url_and_creates_pending_payment(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
 
@@ -180,7 +180,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_create_intent_ignores_client_supplied_amount(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
 
@@ -201,7 +201,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_create_intent_is_rejected_when_not_authorized(): void
     {
-        $owner = User::factory()->create();
+        $owner = $this->createAdminUser();
         $other = User::factory()->create();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($owner, $type);
@@ -213,7 +213,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_create_intent_rejects_invalid_data(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
 
         $this->actingAs($user)
             ->postJson(route('payment.lahza.initialize'), [])
@@ -234,7 +234,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_callback_verifies_and_finalizes_payment(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $payment = $this->makePendingPayment($request, 'lahza_cb_ok');
@@ -269,7 +269,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_callback_does_not_finalize_when_transaction_is_not_success(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'lahza_cb_abandoned');
@@ -329,7 +329,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_webhook_charge_success_marks_payment_as_succeeded(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $payment = $this->makePendingPayment($request, 'lahza_test_123');
@@ -361,7 +361,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_webhook_rejects_stale_timestamp_to_prevent_replay(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'lahza_replay');
@@ -393,7 +393,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_webhook_does_not_finalize_on_amount_mismatch(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'lahza_mismatch');
@@ -422,7 +422,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_webhook_is_idempotent_for_duplicate_event_id(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'lahza_test_789');
@@ -461,7 +461,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_resume_page_shows_confirmation_for_lahza_pending_payment(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'lahza_resume');
@@ -475,7 +475,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_resume_page_for_stripe_payment_redirects_to_stripe_page(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
 
@@ -496,7 +496,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_resume_page_is_rejected_when_not_authorized(): void
     {
-        $owner = User::factory()->create();
+        $owner = $this->createAdminUser();
         $other = User::factory()->create();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($owner, $type);
@@ -509,7 +509,7 @@ class LahzaPaymentControllerTest extends TestCase
 
     public function test_continue_payment_redirects_to_lahza_authorization_url(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'lahza_resume_cont');

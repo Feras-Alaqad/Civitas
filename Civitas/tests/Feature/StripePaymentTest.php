@@ -134,7 +134,7 @@ class StripePaymentTest extends TestCase
 
     public function test_create_intent_returns_client_secret_and_creates_pending_payment(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
 
@@ -164,7 +164,7 @@ class StripePaymentTest extends TestCase
 
     public function test_create_intent_is_rejected_when_not_authorized(): void
     {
-        $owner = User::factory()->create();
+        $owner = $this->createAdminUser();
         $other = User::factory()->create();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($owner, $type);
@@ -176,7 +176,7 @@ class StripePaymentTest extends TestCase
 
     public function test_create_intent_rejects_invalid_data(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
 
         $this->actingAs($user)
             ->postJson(route('admin.service.payments.create-intent'), [])
@@ -197,7 +197,7 @@ class StripePaymentTest extends TestCase
 
     public function test_status_reports_pending_without_frontend_confirmation(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'pi_status_pending');
@@ -212,7 +212,7 @@ class StripePaymentTest extends TestCase
 
     public function test_status_reports_finalized_only_after_webhook(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $payment = $this->makePendingPayment($request, 'pi_status_done');
@@ -241,7 +241,7 @@ class StripePaymentTest extends TestCase
 
     public function test_status_is_rejected_when_not_authorized(): void
     {
-        $owner = User::factory()->create();
+        $owner = $this->createAdminUser();
         $other = User::factory()->create();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($owner, $type);
@@ -255,7 +255,7 @@ class StripePaymentTest extends TestCase
     {
         config(['services.stripe.key' => 'pk_test_dummy']);
 
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $request->update(['Status' => 'Completed']);
@@ -288,7 +288,7 @@ class StripePaymentTest extends TestCase
 
     public function test_webhook_succeeded_marks_payment_as_succeeded(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $payment = $this->makePendingPayment($request, 'pi_test_123');
@@ -321,7 +321,7 @@ class StripePaymentTest extends TestCase
 
     public function test_webhook_payment_failed_marks_payment_as_failed(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'pi_test_456');
@@ -349,7 +349,7 @@ class StripePaymentTest extends TestCase
 
     public function test_webhook_does_not_finalize_on_amount_mismatch(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'pi_mismatch');
@@ -376,7 +376,7 @@ class StripePaymentTest extends TestCase
 
     public function test_webhook_is_idempotent_for_duplicate_event_id(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createAdminUser();
         $type = $this->makeServiceType(25.00);
         $request = $this->makeServiceRequest($user, $type);
         $this->makePendingPayment($request, 'pi_test_789');
