@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\FinalizeSuccessfulPayment;
 use App\Models\Payment;
 use App\Models\ServiceRequest;
+use App\Models\StripePayout;
 use App\Models\StripeWebhookEvent;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -311,6 +314,14 @@ class StripePaymentController extends Controller
                     $this->handlePaymentFailed($event);
                     break;
 
+                case 'payout.created':
+                case 'payout.updated':
+                case 'payout.paid':
+                case 'payout.failed':
+                case 'payout.canceled':
+                    $this->handlePayoutEvent($event);
+                    break;
+
                 default:
                     Log::info('Stripe: unhandled event type', ['type' => $event->type]);
                     break;
@@ -335,7 +346,7 @@ class StripePaymentController extends Controller
         $intent = $event->data->object;
         $payment = Payment::where('StripePaymentIntentID', $intent->id)->first();
 
-        if (!$payment || $payment->Status === 'succeeded') {
+        if (! $payment || $payment->Status === 'succeeded') {
             Log::info('Stripe: no matching pending payment for succeeded intent', [
                 'intent_id' => $intent->id,
             ]);
@@ -364,12 +375,12 @@ class StripePaymentController extends Controller
         $payment->update([
             'Status' => 'succeeded',
             'PaidAt' => now(),
-            'ReceiptNumber' => $payment->ReceiptNumber ?: 'RCPT-' . strtoupper(Str::random(10)),
+            'ReceiptNumber' => $payment->ReceiptNumber ?: 'RCPT-'.strtoupper(Str::random(10)),
             'Currency' => strtoupper($intent->currency),
         ]);
 
         // Heavy async work (updating the service request, audit log, cache) is deferred to a queue job.
-        dispatch(new \App\Jobs\FinalizeSuccessfulPayment($payment->PaymentID));
+        dispatch(new FinalizeSuccessfulPayment($payment->PaymentID));
     }
 
     protected function handlePaymentFailed($event)
@@ -377,7 +388,7 @@ class StripePaymentController extends Controller
         $intent = $event->data->object;
         $payment = Payment::where('StripePaymentIntentID', $intent->id)->first();
 
-        if (!$payment) {
+        if (! $payment) {
             Log::info('Stripe: no matching payment for failed intent', ['intent_id' => $intent->id]);
 
             return;
@@ -391,16 +402,64 @@ class StripePaymentController extends Controller
         ]);
     }
 
+    protected function handlePayoutEvent($event)
+    {
+        $payout = $event->data->object;
+        $record = StripePayout::where('StripePayoutID', $payout->id)->first();
+
+        if (! $record) {
+            Log::info('Stripe: payout webhook for an unknown payout record', ['payout_id' => $payout->id]);
+
+            return;
+        }
+
+        $status = match ($event->type) {
+            'payout.paid' => 'paid',
+            'payout.failed' => 'failed',
+            'payout.canceled' => 'canceled',
+            default => $this->mapPayoutStatus((string) ($payout->status ?? 'pending')),
+        };
+
+        $update = ['Status' => $status];
+
+        if ($status === 'failed') {
+            $update['FailureCode'] = $payout->failure_code ?? null;
+            $update['FailureReason'] = $payout->failure_message ?? $payout->failure_code ?? null;
+        }
+
+        if (! empty($payout->arrival_date)) {
+            $update['ArrivalDate'] = Carbon::createFromTimestamp((int) $payout->arrival_date);
+        }
+
+        $record->update($update);
+
+        Log::info('Stripe: payout status updated via webhook', [
+            'payout_id' => $payout->id,
+            'status' => $status,
+        ]);
+    }
+
+    protected function mapPayoutStatus(string $status): string
+    {
+        return match ($status) {
+            'paid' => 'paid',
+            'in_transit' => 'in_transit',
+            'canceled' => 'canceled',
+            'failed' => 'failed',
+            default => 'pending',
+        };
+    }
+
     protected function reconcileSucceededIntent(Payment $payment, string $currency): void
     {
         $payment->update([
             'Status' => 'succeeded',
             'PaidAt' => now(),
-            'ReceiptNumber' => $payment->ReceiptNumber ?: 'RCPT-' . strtoupper(Str::random(10)),
+            'ReceiptNumber' => $payment->ReceiptNumber ?: 'RCPT-'.strtoupper(Str::random(10)),
             'Currency' => strtoupper($currency),
         ]);
 
-        dispatch(new \App\Jobs\FinalizeSuccessfulPayment($payment->PaymentID));
+        dispatch(new FinalizeSuccessfulPayment($payment->PaymentID));
     }
 
     protected function client(): StripeClient

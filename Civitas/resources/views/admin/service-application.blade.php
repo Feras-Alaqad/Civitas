@@ -402,6 +402,20 @@
                         <svg class="h-3.5 w-3.5 opacity-0 transition-opacity duration-300" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     </span>
                 </button>
+
+                <button type="button" data-method="nowpayments" onclick="selectPaymentMethod(this)"
+                    class="pay-method-option group flex w-full items-center gap-4 rounded-xl border-2 border-gray-200 bg-white p-4 text-left transition-all duration-300 hover:border-purple-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-purple-500/50">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600 transition-colors duration-300 group-hover:bg-purple-100 dark:bg-purple-500/15 dark:text-purple-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-semibold text-gray-800 dark:text-white/90">Pay with Crypto</span>
+                        <span class="block text-xs text-gray-400 dark:text-gray-500">Cryptocurrency payment via NOWPayments</span>
+                    </span>
+                    <span class="pay-method-check flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 text-white transition-all duration-300 dark:border-gray-600">
+                        <svg class="h-3.5 w-3.5 opacity-0 transition-opacity duration-300" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                </button>
             </div>
 
             <p id="payMethodError" class="mt-4 hidden rounded-lg bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600 dark:bg-red-500/10 dark:text-red-400"></p>
@@ -690,6 +704,8 @@ function confirmPaymentChoice() {
         startStripePayment();
     } else if (paymentChoice === 'lahza') {
         startLahzaPayment();
+    } else if (paymentChoice === 'nowpayments') {
+        startNowPaymentsPayment();
     }
 }
 
@@ -764,6 +780,40 @@ async function startLahzaPayment() {
     } catch (err) {
         console.error('Error:', err);
         showPaymentMethodError(err.message || 'Unable to start the payment process.');
+        setPaymentMethodBusy(false);
+        paymentFlowLocked = false;
+    }
+}
+
+async function startNowPaymentsPayment() {
+    setPaymentMethodBusy(true);
+    document.getElementById('payMethodConfirmLabel').textContent = 'Creating crypto invoice\u2026';
+
+    try {
+        const requestId = await createServiceRequest('nowpayments');
+
+        const res = await fetch('{{ route("payment.nowpayments.initialize") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                request_id: requestId,
+            }),
+        });
+
+        const data = await res.json();
+
+        if (!data.success || !data.invoice_url) {
+            throw new Error(data.message || 'Unable to start the crypto payment.');
+        }
+
+        window.location.href = data.invoice_url;
+    } catch (err) {
+        console.error('Error:', err);
+        showPaymentMethodError(err.message || 'Unable to start the crypto payment.');
         setPaymentMethodBusy(false);
         paymentFlowLocked = false;
     }

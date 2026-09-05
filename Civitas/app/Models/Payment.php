@@ -21,6 +21,7 @@ class Payment extends Model
         'ReceiptNumber',
         'StripePaymentIntentID',
         'LahzaReference',
+        'NowPaymentsPaymentID',
         'Currency',
         'Status',
         'Metadata',
@@ -55,6 +56,10 @@ class Payment extends Model
 
         if ($this->LahzaReference) {
             return 'Lahza';
+        }
+
+        if ($this->NowPaymentsPaymentID) {
+            return 'NOWPayments';
         }
 
         return 'Unknown';

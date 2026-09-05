@@ -145,19 +145,23 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @foreach($serviceRequests as $req)
                         @php
-                            $gateway = !empty($req->LahzaReference) ? 'lahza'
-                                : (!empty($req->StripePaymentIntentID) ? 'stripe' : null);
+                            $gateway = !empty($req->NowPaymentsPaymentID) ? 'nowpayments'
+                                : (!empty($req->LahzaReference) ? 'lahza'
+                                : (!empty($req->StripePaymentIntentID) ? 'stripe' : null));
 
                             $payUrl = null;
                             if ($req->Status === 'Pending') {
-                                if ($gateway === 'lahza') {
+                                if ($gateway === 'nowpayments') {
+                                    $payUrl = route('payment.nowpayments.page', ['requestId' => $req->RequestID]);
+                                } elseif ($gateway === 'lahza') {
                                     $payUrl = route('payment.lahza.page', ['requestId' => $req->RequestID]);
                                 } else {
                                     $payUrl = route('admin.service.payments.page', ['requestId' => $req->RequestID]);
                                 }
                             }
 
-                            $payLabel = $gateway === 'lahza' ? 'Continue with Lahza' : 'Continue Payment';
+                            $payLabel = $gateway === 'nowpayments' ? 'Continue with Crypto'
+                                : ($gateway === 'lahza' ? 'Continue with Lahza' : 'Continue Payment');
 
                             $reqData = [
                                 'id' => $req->RequestID,
@@ -268,7 +272,7 @@
             const payButtonHtml = data.pay_url
                 ? `<a href="${data.pay_url}" class="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-500/25 hover:bg-brand-600 transition-colors">
                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                       ${data.pay_method === 'lahza' ? 'Continue with Lahza' : 'Continue Payment'}
+                       ${data.pay_method === 'nowpayments' ? 'Continue with Crypto' : (data.pay_method === 'lahza' ? 'Continue with Lahza' : 'Continue Payment')}
                    </a>`
                 : '';
 

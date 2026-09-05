@@ -344,7 +344,7 @@ class CitizensCacheService
                     'Service_Requests.Status', 'Service_Requests.created_at', 'Service_Requests.updated_at',
                     'Service_Types.ServiceName', 'Service_Types.Fees', 'Service_Types.RequiredDocuments',
                     'Departments.DepartmentName',
-                    'Payments.StripePaymentIntentID', 'Payments.LahzaReference',
+                    'Payments.StripePaymentIntentID', 'Payments.LahzaReference', 'Payments.NowPaymentsPaymentID',
                 )
                 ->orderByDesc('Service_Requests.RequestDate')
                 ->get();

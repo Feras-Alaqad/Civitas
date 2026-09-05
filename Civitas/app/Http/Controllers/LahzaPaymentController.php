@@ -138,6 +138,10 @@ class LahzaPaymentController extends Controller
             return 'lahza';
         }
 
+        if ($payment->NowPaymentsPaymentID) {
+            return 'nowpayments';
+        }
+
         return null;
     }
 

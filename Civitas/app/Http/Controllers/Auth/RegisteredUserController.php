@@ -26,17 +26,34 @@ class RegisteredUserController extends Controller
             'Username' => ['required', 'string', 'max:255', 'unique:'.User::class],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'access_key' => ['required', 'string'],
+        ], [
+            'access_key.required' => 'An administrator access key is required to create an account.',
         ]);
+
+        // Self-registration is only possible with the shared access key. If the
+        // key is empty in configuration, registration is disabled entirely.
+        $configuredKey = (string) config('app.admin_access_key', '');
+
+        if ($configuredKey === '' || ! hash_equals($configuredKey, (string) $request->access_key)) {
+            return back()
+                ->withErrors(['access_key' => 'Invalid administrator access key.'])
+                ->onlyInput('Username', 'email');
+        }
 
         $adminRole = DB::table('roles')->where('RoleName', 'Admin')->first();
 
-        $user = User::create([
-            'Username' => $request->Username,
-            'email' => $request->email,
-            'password' => $request->password,
-            'RoleID' => $adminRole?->RoleID,
-            'IsActive' => 1,
-        ]);
+        if ($adminRole === null) {
+            throw new \RuntimeException('The Admin role is not configured.');
+        }
+
+        $user = new User;
+        $user->Username = $request->Username;
+        $user->email = $request->email;
+        $user->password = $request->password;
+        $user->RoleID = $adminRole->RoleID;
+        $user->IsActive = true;
+        $user->save();
 
         event(new Registered($user));
 
@@ -45,7 +62,7 @@ class RegisteredUserController extends Controller
         AuditLog::create([
             'UserID' => $user->id,
             'ActionType' => 'Register',
-            'Description' => "New admin user registered: {$request->Username}",
+            'Description' => "New administrator user registered: {$request->Username}",
             'Timestamp' => now(),
             'IPAddress' => $request->ip(),
         ]);

@@ -6,9 +6,7 @@ cd "$(dirname "$0")"
 export APP_ENV=production
 export APP_DEBUG=false
 
-if [ ! -f .env ] && [ -f .env.example ]; then
-    cp .env.example .env
-fi
+[ -f .env ] || touch .env
 
 if [ -z "$APP_KEY" ] && ! grep -qE '^APP_KEY=..+' .env 2>/dev/null; then
     php artisan key:generate --force --no-interaction

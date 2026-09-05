@@ -2,11 +2,16 @@
 
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\CitizenController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\StripePayoutController;
 use App\Http\Controllers\LahzaPaymentController;
+use App\Http\Controllers\NowPaymentsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StripePaymentController;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -20,9 +25,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Admin Dashboard
-    Route::prefix('admin')->name('admin.')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+    // Admin Dashboard (Admin role only)
+    Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         Route::get('/profile', function () {
             return view('admin.profile', ['user' => auth()->user()]);
@@ -30,6 +35,20 @@ Route::middleware('auth')->group(function () {
         Route::patch('/profile', [ProfileController::class, 'adminUpdate'])->name('profile.update');
 
         Route::get('/citizens', [CitizenController::class, 'index'])->name('citizens');
+
+        Route::get('/payments', [PaymentController::class, 'index'])->name('payments');
+        Route::post('/payments/withdraw', [StripePayoutController::class, 'withdraw'])
+            ->middleware('throttle:20,1')
+            ->name('payments.withdraw');
+        Route::post('/payments/bank-accounts', [StripePayoutController::class, 'attachBankAccount'])
+            ->middleware('throttle:20,1')
+            ->name('payments.bank-accounts.attach');
+        Route::post('/payments/bank-accounts/default', [StripePayoutController::class, 'setDefaultBankAccount'])
+            ->middleware('throttle:20,1')
+            ->name('payments.bank-accounts.default');
+        Route::post('/payments/bank-accounts/delete', [StripePayoutController::class, 'deleteBankAccount'])
+            ->middleware('throttle:20,1')
+            ->name('payments.bank-accounts.delete');
 
         Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create');
         Route::post('/service/store', [ServiceController::class, 'store'])->name('service.store');
@@ -49,20 +68,20 @@ Route::middleware('auth')->group(function () {
 // Stripe webhook (public, CSRF-exempt) - receives events from Stripe
 Route::post('/api/stripe/webhook', [StripePaymentController::class, 'handleWebhook'])
     ->middleware('throttle:60,1')
-    ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class);
+    ->withoutMiddleware(PreventRequestForgery::class);
 
 // Lahza (Bank of Palestine) payment gateway
 Route::post('/payment/lahza/initialize', [LahzaPaymentController::class, 'createIntent'])
-    ->middleware(['auth', 'throttle:20,1'])
+    ->middleware(['auth', 'admin', 'throttle:20,1'])
     ->name('payment.lahza.initialize');
 
 // Resume a pending payment with the gateway it originally used.
 Route::get('/payment/lahza/page/{requestId}', [LahzaPaymentController::class, 'resumePage'])
-    ->middleware('auth')
+    ->middleware(['auth', 'admin'])
     ->name('payment.lahza.page');
 
 Route::post('/payment/lahza/continue', [LahzaPaymentController::class, 'continuePayment'])
-    ->middleware(['auth', 'throttle:20,1'])
+    ->middleware(['auth', 'admin', 'throttle:20,1'])
     ->name('payment.lahza.continue');
 
 // Lahza redirects the customer back here after the payment attempt (public)
@@ -75,6 +94,25 @@ Route::get('/payment/lahza/callback', [LahzaPaymentController::class, 'verifyCal
 Route::match(['get', 'post'], '/webhooks/lahza', [LahzaPaymentController::class, 'webhook'])
     ->middleware('throttle:60,1')
     ->name('webhooks.lahza')
-    ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class);
+    ->withoutMiddleware(PreventRequestForgery::class);
+
+// NOWPayments (Cryptocurrency) payment gateway
+Route::post('/payment/nowpayments/initialize', [NowPaymentsController::class, 'initialize'])
+    ->middleware(['auth', 'admin', 'throttle:20,1'])
+    ->name('payment.nowpayments.initialize');
+
+Route::get('/payment/nowpayments/verify/{paymentId}', [NowPaymentsController::class, 'verify'])
+    ->middleware(['auth', 'admin', 'throttle:30,1'])
+    ->name('payment.nowpayments.verify');
+
+Route::get('/payment/nowpayments/page/{requestId}', [NowPaymentsController::class, 'resumePage'])
+    ->middleware(['auth', 'admin'])
+    ->name('payment.nowpayments.page');
+
+// NOWPayments IPN webhook (public, CSRF-exempt)
+Route::post('/webhooks/nowpayments', [NowPaymentsController::class, 'ipnWebhook'])
+    ->middleware('throttle:60,1')
+    ->name('webhooks.nowpayments')
+    ->withoutMiddleware(PreventRequestForgery::class);
 
 require __DIR__.'/auth.php';

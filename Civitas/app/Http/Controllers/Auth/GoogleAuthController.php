@@ -7,9 +7,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 class GoogleAuthController extends Controller
@@ -17,7 +15,17 @@ class GoogleAuthController extends Controller
     public function redirect(Request $request)
     {
         $mode = $request->query('mode', 'login');
-        session(['google_auth_mode' => $mode]);
+
+        // Self-registration via Google is disabled: it previously created
+        // DataEntry accounts that were auto-logged-in with full access to the
+        // admin area. New accounts can only be created with the registration
+        // page (password + administrator access key).
+        if ($mode === 'register') {
+            return redirect()->route('login')
+                ->with('error', 'Account creation via Google is disabled. Create your account with a username and password using the administrator access key.');
+        }
+
+        session(['google_auth_mode' => 'login']);
 
         return Socialite::driver('google')->redirect();
     }
@@ -34,50 +42,21 @@ class GoogleAuthController extends Controller
 
         $mode = session('google_auth_mode', 'login');
 
+        // Registration mode is disabled (see redirect()). A callback may only
+        // ever log an existing user in.
+        if ($mode !== 'login') {
+            session()->forget('google_auth_mode');
+
+            return redirect()->route('login')
+                ->with('error', 'Account creation via Google is disabled.');
+        }
+
+        session()->forget('google_auth_mode');
+
         try {
             $user = User::where('google_id', $googleUser->getId())
                 ->orWhere('email', $googleUser->getEmail())
                 ->first();
-
-            if ($mode === 'register') {
-                if ($user) {
-                    Auth::login($user, remember: true);
-
-                    AuditLog::create([
-                        'UserID' => $user->id,
-                        'ActionType' => 'Login (Google)',
-                        'Description' => 'Google OAuth login via ' . $googleUser->getEmail(),
-                        'Timestamp' => now(),
-                        'IPAddress' => request()->ip(),
-                    ]);
-
-                    return redirect()->route('admin.dashboard');
-                }
-
-                $defaultRole = DB::table('roles')->where('RoleName', 'DataEntry')->first();
-
-                $user = User::create([
-                    'Username' => $googleUser->getName() ?? $googleUser->getNickname() ?? Str::before($googleUser->getEmail(), '@'),
-                    'email' => $googleUser->getEmail(),
-                    'password' => bcrypt(Str::random(32)),
-                    'RoleID' => $defaultRole?->RoleID,
-                    'google_id' => $googleUser->getId(),
-                    'avatar' => $googleUser->getAvatar(),
-                    'IsActive' => true,
-                ]);
-
-                AuditLog::create([
-                    'UserID' => $user->id,
-                    'ActionType' => 'Register (Google)',
-                    'Description' => 'New user registered via Google OAuth: ' . $googleUser->getEmail(),
-                    'Timestamp' => now(),
-                    'IPAddress' => request()->ip(),
-                ]);
-
-                Auth::login($user, remember: true);
-
-                return redirect()->route('admin.dashboard');
-            }
 
             if (!$user) {
                 return redirect()->route('login')

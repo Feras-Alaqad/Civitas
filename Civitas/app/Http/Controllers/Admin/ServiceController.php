@@ -63,7 +63,7 @@ class ServiceController extends Controller
         $request->validate([
             'person_id' => 'required|string|exists:Persons,PersonID',
             'service_type_id' => 'required|string|exists:Service_Types,ServiceTypeID',
-            'payment_method' => 'required|in:stripe,lahza',
+            'payment_method' => 'required|in:stripe,lahza,nowpayments',
         ]);
 
         $personId = $request->input('person_id');

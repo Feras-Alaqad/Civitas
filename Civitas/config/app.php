@@ -56,6 +56,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Administrator Access Key
+    |--------------------------------------------------------------------------
+    |
+    | A shared secret that must be provided on the registration page to create
+    | an administrator account. Keep it empty to disable self-registration
+    | entirely. Strong-random value expected (e.g. base64 of 32+ bytes).
+    |
+    */
+
+    'admin_access_key' => env('ADMIN_ACCESS_KEY', ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

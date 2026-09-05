@@ -14,7 +14,7 @@ cd /d "%~dp0"
 
 REM Generate APP_KEY on first run
 if not exist .env (
-    copy .env.example .env >nul
+    type nul > .env
     php artisan key:generate --force
 )
 
